@@ -940,9 +940,31 @@ async function saveRecord() {
     error=e;
     if(!e) showToast('✏️',`Record updated in ${tableName}`);
   } else {
-    const {error:e}=await sb.from(tableName).insert(record);
+    const {data:inserted, error:e}=await sb.from(tableName).insert(record).select().single();
     error=e;
-    if(!e) showToast('✅',`Record added to ${tableName}`);
+    if(!e){
+      showToast('✅',`Record added to ${tableName}`);
+      // Auto-create auth account when a new hospital is added
+      if(tableName==='hospitals' && inserted) {
+        showToast('⏳','Creating hospital login account…');
+        try {
+          const r = await fetch('/api/create-hospital-user', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({
+              hospital_id:   inserted.id,
+              hospital_name: inserted.name,
+              pin:           inserted.pin || '1234'
+            })
+          });
+          const result = await r.json();
+          if(result.success) showToast('🔐',`Login account created for ${inserted.name}!`);
+          else showToast('⚠️','Hospital saved but account creation failed: '+result.error);
+        } catch(err) {
+          showToast('⚠️','Hospital saved but account creation failed: '+err.message);
+        }
+      }
+    }
   }
   if(error){showToast('❌','Error: '+error.message);return;}
   closeModal();
