@@ -948,9 +948,13 @@ async function saveRecord() {
       if(tableName==='hospitals' && inserted) {
         showToast('⏳','Creating hospital login account…');
         try {
+          const { data:{ session:adminSession } } = await sb.auth.getSession();
           const r = await fetch('/api/create-hospital-user', {
             method: 'POST',
-            headers: {'Content-Type':'application/json'},
+            headers: {
+              'Content-Type':'application/json',
+              'Authorization': `Bearer ${adminSession?.access_token}`
+            },
             body: JSON.stringify({
               hospital_id:   inserted.id,
               hospital_name: inserted.name,
