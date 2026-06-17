@@ -903,10 +903,12 @@ function buildForm(table, values, hospId) {
     if(col==='doctor_id'||type==='doctor_select'){
       const docs = hospId ? cachedDoctors.filter(d=>d.hospital_id===hospId) : cachedDoctors;
       input=`<select class="form-select" id="field_${col}"><option value="">— Select Doctor —</option>${docs.map(d=>`<option value="${d.id}" ${d.id==val?'selected':''}>${d.name} · ${d.specialty}</option>`).join('')}</select>`;
+    } else if(col==='pin'){
+      input=`<input class="form-input-modal" type="text" id="field_${col}" value="${val||''}" maxlength="4" pattern="[0-9]{4}" placeholder="4 digits" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">`;
     } else if(Array.isArray(type)){
       input=`<select class="form-select" id="field_${col}">${type.map(o=>`<option value="${o}"${o==val?' selected':''}>${o}</option>`).join('')}</select>`;
     } else if(type==='date'){
-      input=`<input class="form-input-modal" type="date" id="field_${col}" value="${val||''}">`;
+      input=`<input class="form-input-modal" type="date" id="field_${col}" value="${val||''}" min="1800-01-01" max="2100-12-31">`;
     } else if(type==='number'){
       const locked = col==='hospital_id' && hospId;
       input=`<input class="form-input-modal" type="number" id="field_${col}" value="${locked?hospId:val||''}" ${locked?'readonly style="opacity:.5"':''}>`;
