@@ -281,27 +281,37 @@ tr:hover td{background:var(--surface2)}
   .hospital-grid{grid-template-columns:1fr}
   .overview-grid{grid-template-columns:1fr!important}
 }
+/* ── LANGUAGE TOGGLE ── */
+.lang-toggle{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:20px;overflow:hidden;flex-shrink:0}
+.lang-btn{padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);transition:all .2s;font-family:var(--sans)}
+.lang-btn.active{background:var(--cyan);color:#000}
+.login-lang{position:absolute;top:16px;right:16px}
+#loginScreen{position:relative}
 </style>
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="loginScreen" class="screen active">
+  <div class="lang-toggle login-lang">
+    <button class="lang-btn active" id="login-lang-en" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" id="login-lang-fr" onclick="setLang('fr')">FR</button>
+  </div>
   <div class="login-wrapper">
     <div class="login-header">
       <div class="login-logo">🏥</div>
       <div class="login-title">Hospital<span>DB</span></div>
-      <div class="login-sub">Multi-user hospital management platform</div>
+      <div class="login-sub" id="login-sub-text">Multi-user hospital management platform</div>
     </div>
     <div class="login-tabs">
-      <div class="login-tab active" onclick="switchLoginTab('hospital',this)">🏥 Hospital Login</div>
-      <div class="login-tab" onclick="switchLoginTab('admin',this)">🔐 Admin Login</div>
+      <div class="login-tab active" id="tab-hospital" onclick="switchLoginTab('hospital',this)">🏥 Hospital Login</div>
+      <div class="login-tab" id="tab-admin" onclick="switchLoginTab('admin',this)">🔐 Admin Login</div>
     </div>
     <div id="hospitalPicker">
       <div class="hospital-grid" id="hospitalGrid"></div>
       <div class="pin-panel" id="pinPanel">
         <div class="pin-selected-name" id="pinHospName"></div>
-        <div class="pin-label">Enter your 4-digit PIN to continue</div>
+        <div class="pin-label" id="pin-label-text">Enter your 4-digit PIN to continue</div>
         <div class="pin-dots" id="pinDots">
           <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
           <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
@@ -316,22 +326,22 @@ tr:hover td{background:var(--surface2)}
           <button class="pin-key" onclick="pinPress('7')">7</button>
           <button class="pin-key" onclick="pinPress('8')">8</button>
           <button class="pin-key" onclick="pinPress('9')">9</button>
-          <button class="pin-key del" onclick="pinClear()">Clear</button>
+          <button class="pin-key del" id="pin-clear-btn" onclick="pinClear()">Clear</button>
           <button class="pin-key" onclick="pinPress('0')">0</button>
           <button class="pin-key del" onclick="pinBack()">⌫</button>
         </div>
-        <div class="pin-hint">Enter your hospital PIN</div>
+        <div class="pin-hint" id="pin-hint-text">Enter your hospital PIN</div>
         <div class="pin-error" id="pinError"></div>
       </div>
     </div>
     <div id="adminPicker" style="display:none">
       <div class="admin-login fade-in">
         <div class="admin-icon">🔐</div>
-        <div class="admin-login-title">Administrator Access</div>
-        <div class="admin-login-sub">Full system access — all hospitals & records</div>
+        <div class="admin-login-title" id="admin-login-title">Administrator Access</div>
+        <div class="admin-login-sub" id="admin-login-sub">Full system access — all hospitals & records</div>
         <input class="form-input" type="email" id="adminUser" placeholder="Email" value="admin@hospitaldb.com">
         <input class="form-input" type="password" id="adminPass" placeholder="Password">
-        <button class="btn btn-red" style="width:100%;justify-content:center" onclick="adminLogin()">🔐 Sign In as Admin</button>
+        <button class="btn btn-red" style="width:100%;justify-content:center" id="admin-signin-btn" onclick="adminLogin()">🔐 Sign In as Admin</button>
         <div class="pin-error" id="adminError"></div>
       </div>
     </div>
@@ -345,42 +355,46 @@ tr:hover td{background:var(--surface2)}
       <button class="menu-btn" onclick="toggleSidebar('adminSidebar')">☰</button>
       <div class="logo"><div class="logo-icon">🏥</div><span class="logo-text">Hospital<span>DB</span></span></div>
       <div class="divider-v"></div>
-      <div class="user-pill"><div class="user-pill-avatar avatar-admin">A</div><span>Administrator</span></div>
+      <div class="user-pill"><div class="user-pill-avatar avatar-admin">A</div><span id="admin-role-label">Administrator</span></div>
     </div>
     <div class="header-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="admin-lang-en" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" id="admin-lang-fr" onclick="setLang('fr')">FR</button>
+      </div>
       <span style="font-size:12px;color:var(--muted)"><span class="status-dot"></span>Supabase · Live</span>
-      <button class="btn btn-ghost btn-sm" onclick="logout()">← Logout</button>
+      <button class="btn btn-ghost btn-sm" id="admin-logout-btn" onclick="logout()">← Logout</button>
     </div>
   </header>
   <div class="app-body">
     <div class="sidebar-overlay" id="adminOverlay" onclick="closeSidebar('adminSidebar','adminOverlay')"></div>
     <aside id="adminSidebar">
       <div style="padding:0 0 8px">
-        <div class="sidebar-label">Admin Views</div>
+        <div class="sidebar-label" id="adm-label-views">Admin Views</div>
         <div class="table-item active" id="adm-overview-item" onclick="adminView('overview',this);closeSidebar('adminSidebar','adminOverlay')">
-          <span class="table-icon">◉</span> Overview
+          <span class="table-icon">◉</span> <span id="adm-nav-overview">Overview</span>
         </div>
       </div>
       <div>
-        <div class="sidebar-label" style="margin-top:8px">All Tables</div>
-        <div class="table-item" onclick="adminView('hospitals',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> hospitals <span class="row-count" id="adm-rc-hospitals"></span></div>
-        <div class="table-item" onclick="adminView('patients',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> patients <span class="row-count" id="adm-rc-patients"></span></div>
-        <div class="table-item" onclick="adminView('doctors',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> doctors <span class="row-count" id="adm-rc-doctors"></span></div>
-        <div class="table-item" onclick="adminView('appointments',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> appointments <span class="row-count" id="adm-rc-appointments"></span></div>
-        <div class="table-item" onclick="adminView('departments',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> departments <span class="row-count" id="adm-rc-departments"></span></div>
-        <div class="table-item" onclick="adminView('admissions',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> admissions <span class="row-count" id="adm-rc-admissions"></span></div>
+        <div class="sidebar-label" style="margin-top:8px" id="adm-label-tables">All Tables</div>
+        <div class="table-item" onclick="adminView('hospitals',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> <span id="adm-nav-hospitals">hospitals</span> <span class="row-count" id="adm-rc-hospitals"></span></div>
+        <div class="table-item" onclick="adminView('patients',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> <span id="adm-nav-patients">patients</span> <span class="row-count" id="adm-rc-patients"></span></div>
+        <div class="table-item" onclick="adminView('doctors',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> <span id="adm-nav-doctors">doctors</span> <span class="row-count" id="adm-rc-doctors"></span></div>
+        <div class="table-item" onclick="adminView('appointments',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> <span id="adm-nav-appointments">appointments</span> <span class="row-count" id="adm-rc-appointments"></span></div>
+        <div class="table-item" onclick="adminView('departments',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> <span id="adm-nav-departments">departments</span> <span class="row-count" id="adm-rc-departments"></span></div>
+        <div class="table-item" onclick="adminView('admissions',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> <span id="adm-nav-admissions">admissions</span> <span class="row-count" id="adm-rc-admissions"></span></div>
       </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-info"><div class="sidebar-info-label">Platform</div><div class="sidebar-info-val">Supabase · PostgreSQL</div></div>
     </aside>
     <main>
       <div class="filter-bar" id="adminFilterBar">
-        <span class="chip chip-active" onclick="runChip(this,'hospitals',null,'admin')">🏥 All Hospitals</span>
-        <span class="chip" onclick="runChip(this,'patients',{column:'status',value:'Active'},'admin')">🟢 Active Patients</span>
-        <span class="chip" onclick="runChip(this,'doctors',null,'admin')">👨‍⚕️ All Doctors</span>
-        <span class="chip" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'admin')">📅 Scheduled</span>
-        <span class="chip" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'admin')">🚨 Critical</span>
-        <span class="chip" onclick="runChip(this,'departments',null,'admin')">🏢 Departments</span>
+        <span class="chip chip-active" id="chip-adm-hospitals" onclick="runChip(this,'hospitals',null,'admin')">🏥 <span id="chip-adm-hospitals-txt">All Hospitals</span></span>
+        <span class="chip" id="chip-adm-active" onclick="runChip(this,'patients',{column:'status',value:'Active'},'admin')">🟢 <span id="chip-adm-active-txt">Active Patients</span></span>
+        <span class="chip" id="chip-adm-doctors" onclick="runChip(this,'doctors',null,'admin')">👨‍⚕️ <span id="chip-adm-doctors-txt">All Doctors</span></span>
+        <span class="chip" id="chip-adm-scheduled" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'admin')">📅 <span id="chip-adm-scheduled-txt">Scheduled</span></span>
+        <span class="chip" id="chip-adm-critical" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'admin')">🚨 <span id="chip-adm-critical-txt">Critical</span></span>
+        <span class="chip" id="chip-adm-departments" onclick="runChip(this,'departments',null,'admin')">🏢 <span id="chip-adm-departments-txt">Departments</span></span>
       </div>
       <div class="results-area" id="adminResults"></div>
     </main>
@@ -397,8 +411,12 @@ tr:hover td{background:var(--surface2)}
       <div class="user-pill"><div class="user-pill-avatar avatar-hospital" id="hospPillAvatar">H</div><span id="hospPillName">Hospital</span></div>
     </div>
     <div class="header-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" id="hosp-lang-en" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" id="hosp-lang-fr" onclick="setLang('fr')">FR</button>
+      </div>
       <span style="font-size:12px;color:var(--muted)"><span class="status-dot"></span>Supabase · Live</span>
-      <button class="btn btn-ghost btn-sm" onclick="logout()">← Logout</button>
+      <button class="btn btn-ghost btn-sm" id="hosp-logout-btn" onclick="logout()">← Logout</button>
     </div>
   </header>
   <div class="hosp-banner" id="hospBanner"></div>
@@ -406,23 +424,23 @@ tr:hover td{background:var(--surface2)}
     <div class="sidebar-overlay" id="hospOverlay" onclick="closeSidebar('hospSidebar','hospOverlay')"></div>
     <aside id="hospSidebar">
       <div>
-        <div class="sidebar-label">My Data</div>
-        <div class="table-item active" id="hosp-patients-item" onclick="hospView('patients',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> my patients <span class="row-count" id="hosp-rc-patients"></span></div>
-        <div class="table-item" onclick="hospView('doctors',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> my doctors <span class="row-count" id="hosp-rc-doctors"></span></div>
-        <div class="table-item" onclick="hospView('appointments',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> appointments <span class="row-count" id="hosp-rc-appointments"></span></div>
-        <div class="table-item" onclick="hospView('departments',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> departments <span class="row-count" id="hosp-rc-departments"></span></div>
-        <div class="table-item" onclick="hospView('admissions',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> admissions <span class="row-count" id="hosp-rc-admissions"></span></div>
+        <div class="sidebar-label" id="hosp-label-mydata">My Data</div>
+        <div class="table-item active" id="hosp-patients-item" onclick="hospView('patients',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-patients">my patients</span> <span class="row-count" id="hosp-rc-patients"></span></div>
+        <div class="table-item" onclick="hospView('doctors',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-doctors">my doctors</span> <span class="row-count" id="hosp-rc-doctors"></span></div>
+        <div class="table-item" onclick="hospView('appointments',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-appointments">appointments</span> <span class="row-count" id="hosp-rc-appointments"></span></div>
+        <div class="table-item" onclick="hospView('departments',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-departments">departments</span> <span class="row-count" id="hosp-rc-departments"></span></div>
+        <div class="table-item" onclick="hospView('admissions',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-admissions">admissions</span> <span class="row-count" id="hosp-rc-admissions"></span></div>
       </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-info"><div class="sidebar-info-label">Logged in as</div><div class="sidebar-info-val" id="hospSidebarName">—</div></div>
     </aside>
     <main>
       <div class="filter-bar" id="hospFilterBar">
-        <span class="chip chip-active" onclick="runChip(this,'patients',{column:'status',value:'Active'},'hosp')">🟢 Active Patients</span>
-        <span class="chip" onclick="runChip(this,'patients',null,'hosp')">👥 All Patients</span>
-        <span class="chip" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'hosp')">📅 Scheduled</span>
-        <span class="chip" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'hosp')">🚨 Critical</span>
-        <span class="chip" onclick="runChip(this,'doctors',null,'hosp')">👨‍⚕️ Doctors</span>
+        <span class="chip chip-active" id="chip-hosp-active" onclick="runChip(this,'patients',{column:'status',value:'Active'},'hosp')">🟢 <span id="chip-hosp-active-txt">Active Patients</span></span>
+        <span class="chip" id="chip-hosp-all" onclick="runChip(this,'patients',null,'hosp')">👥 <span id="chip-hosp-all-txt">All Patients</span></span>
+        <span class="chip" id="chip-hosp-scheduled" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'hosp')">📅 <span id="chip-hosp-scheduled-txt">Scheduled</span></span>
+        <span class="chip" id="chip-hosp-critical" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'hosp')">🚨 <span id="chip-hosp-critical-txt">Critical</span></span>
+        <span class="chip" id="chip-hosp-doctors" onclick="runChip(this,'doctors',null,'hosp')">👨‍⚕️ <span id="chip-hosp-doctors-txt">Doctors</span></span>
       </div>
       <div class="results-area" id="hospResults"></div>
     </main>
@@ -459,6 +477,300 @@ tr:hover td{background:var(--surface2)}
 <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg">Done.</span></div>
 
 <script>
+// ════════════════════════════════════════════════
+// TRANSLATIONS
+// ════════════════════════════════════════════════
+const T = {
+  en: {
+    // Login
+    loginSub:        'Multi-user hospital management platform',
+    tabHospital:     '🏥 Hospital Login',
+    tabAdmin:        '🔐 Admin Login',
+    pinLabel:        'Enter your 4-digit PIN to continue',
+    pinHint:         'Enter your hospital PIN',
+    pinClear:        'Clear',
+    pinError:        '✕ Incorrect PIN. Try again.',
+    adminTitle:      'Administrator Access',
+    adminSub:        'Full system access — all hospitals & records',
+    adminSignIn:     '🔐 Sign In as Admin',
+    // Header
+    adminRole:       'Administrator',
+    logout:          '← Logout',
+    // Admin sidebar
+    adminViews:      'Admin Views',
+    overview:        'Overview',
+    allTables:       'All Tables',
+    // Admin chips
+    allHospitals:    'All Hospitals',
+    activePatients:  'Active Patients',
+    allDoctors:      'All Doctors',
+    scheduled:       'Scheduled',
+    critical:        'Critical',
+    departments:     'Departments',
+    // Hospital sidebar
+    myData:          'My Data',
+    myPatients:      'my patients',
+    myDoctors:       'my doctors',
+    appointments:    'appointments',
+    admissions:      'admissions',
+    // Hospital chips
+    allPatients:     'All Patients',
+    doctors:         'Doctors',
+    // Buttons
+    addRecord:       '＋ Add Record',
+    saveRecord:      '💾 Save Record',
+    cancel:          'Cancel',
+    delete:          'Delete',
+    search:          '🔍 Search…',
+    // Modal
+    modeAdd:         'ADD',
+    modeEdit:        'EDIT',
+    // Confirm
+    confirmTitle:    'Delete Record?',
+    confirmDelete:   'Delete',
+    confirmCancel:   'Cancel',
+    // Overview
+    overviewTitle:   'System Overview',
+    overviewSub:     'Full visibility across all',
+    overviewHospitals: 'Hospitals',
+    overviewPatients:  'Patients',
+    overviewDoctors:   'Doctors',
+    overviewAdmissions:'Admissions',
+    overviewClick:   'Hospitals — click to view patients',
+    // Table headers
+    colHospital:     'Hospital',
+    colDoctor:       'Doctor',
+    colActions:      'Actions',
+    // Status badges
+    active:          'Active',
+    discharged:      'Discharged',
+    criticalBadge:   'Critical',
+    scheduled2:      'Scheduled',
+    completed:       'Completed',
+    cancelled:       'Cancelled',
+    yes:             'Yes',
+    no:              'No',
+    low:             'Low',
+    moderate:        'Moderate',
+    closed:          'Closed',
+    // Toasts
+    toastAdded:      'Record added to',
+    toastUpdated:    'Record updated in',
+    toastDeleted:    'Record deleted from',
+    toastCreating:   'Creating hospital login account…',
+    toastCreated:    'Login account created for',
+    // Errors
+    noRows:          'No doctors found for this hospital.',
+    records:         'record',
+    records2:        'records',
+    loading:         'Loading',
+    loggedInAs:      'Logged in as',
+    platform:        'Platform',
+  },
+  fr: {
+    // Login
+    loginSub:        'Plateforme de gestion hospitalière multi-utilisateurs',
+    tabHospital:     '🏥 Connexion Hôpital',
+    tabAdmin:        '🔐 Connexion Admin',
+    pinLabel:        'Entrez votre NIP à 4 chiffres pour continuer',
+    pinHint:         'Entrez le NIP de votre hôpital',
+    pinClear:        'Effacer',
+    pinError:        '✕ NIP incorrect. Réessayez.',
+    adminTitle:      'Accès Administrateur',
+    adminSub:        'Accès complet — tous les hôpitaux & dossiers',
+    adminSignIn:     '🔐 Se connecter en Admin',
+    // Header
+    adminRole:       'Administrateur',
+    logout:          '← Déconnexion',
+    // Admin sidebar
+    adminViews:      'Vues Admin',
+    overview:        'Vue d\'ensemble',
+    allTables:       'Toutes les Tables',
+    // Admin chips
+    allHospitals:    'Tous les Hôpitaux',
+    activePatients:  'Patients Actifs',
+    allDoctors:      'Tous les Médecins',
+    scheduled:       'Planifiés',
+    critical:        'Critiques',
+    departments:     'Départements',
+    // Hospital sidebar
+    myData:          'Mes Données',
+    myPatients:      'mes patients',
+    myDoctors:       'mes médecins',
+    appointments:    'rendez-vous',
+    admissions:      'admissions',
+    // Hospital chips
+    allPatients:     'Tous les Patients',
+    doctors:         'Médecins',
+    // Buttons
+    addRecord:       '＋ Ajouter',
+    saveRecord:      '💾 Sauvegarder',
+    cancel:          'Annuler',
+    delete:          'Supprimer',
+    search:          '🔍 Rechercher…',
+    // Modal
+    modeAdd:         'AJOUT',
+    modeEdit:        'MODIFIER',
+    // Confirm
+    confirmTitle:    'Supprimer l\'enregistrement?',
+    confirmDelete:   'Supprimer',
+    confirmCancel:   'Annuler',
+    // Overview
+    overviewTitle:   'Vue d\'ensemble du système',
+    overviewSub:     'Visibilité complète sur tous les',
+    overviewHospitals: 'Hôpitaux',
+    overviewPatients:  'Patients',
+    overviewDoctors:   'Médecins',
+    overviewAdmissions:'Admissions',
+    overviewClick:   'Hôpitaux — cliquer pour voir les patients',
+    // Table headers
+    colHospital:     'Hôpital',
+    colDoctor:       'Médecin',
+    colActions:      'Actions',
+    // Status badges
+    active:          'Actif',
+    discharged:      'Sorti',
+    criticalBadge:   'Critique',
+    scheduled2:      'Planifié',
+    completed:       'Terminé',
+    cancelled:       'Annulé',
+    yes:             'Oui',
+    no:              'Non',
+    low:             'Faible',
+    moderate:        'Modéré',
+    closed:          'Fermé',
+    // Toasts
+    toastAdded:      'Enregistrement ajouté à',
+    toastUpdated:    'Enregistrement mis à jour dans',
+    toastDeleted:    'Enregistrement supprimé de',
+    toastCreating:   'Création du compte de connexion…',
+    toastCreated:    'Compte créé pour',
+    // Errors
+    noRows:          'Aucun médecin trouvé pour cet hôpital.',
+    records:         'enregistrement',
+    records2:        'enregistrements',
+    loading:         'Chargement',
+    loggedInAs:      'Connecté en tant que',
+    platform:        'Plateforme',
+  }
+};
+
+let lang = localStorage.getItem('hospitaldb_lang') || 'en';
+
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('hospitaldb_lang', l);
+  applyTranslations();
+}
+
+function t(key) { return T[lang][key] || T['en'][key] || key; }
+
+function applyTranslations() {
+  // Update all lang toggle buttons
+  ['login','admin','hosp'].forEach(prefix => {
+    const enBtn = document.getElementById(`${prefix}-lang-en`);
+    const frBtn = document.getElementById(`${prefix}-lang-fr`);
+    if(enBtn) enBtn.classList.toggle('active', lang==='en');
+    if(frBtn) frBtn.classList.toggle('active', lang==='fr');
+  });
+
+  // Login screen
+  const loginSub = document.getElementById('login-sub-text');
+  if(loginSub) loginSub.textContent = t('loginSub');
+  const tabH = document.getElementById('tab-hospital');
+  if(tabH) tabH.textContent = t('tabHospital');
+  const tabA = document.getElementById('tab-admin');
+  if(tabA) tabA.textContent = t('tabAdmin');
+  const pinLbl = document.getElementById('pin-label-text');
+  if(pinLbl) pinLbl.textContent = t('pinLabel');
+  const pinHnt = document.getElementById('pin-hint-text');
+  if(pinHnt) pinHnt.textContent = t('pinHint');
+  const pinClr = document.getElementById('pin-clear-btn');
+  if(pinClr) pinClr.textContent = t('pinClear');
+  const adminTitle = document.getElementById('admin-login-title');
+  if(adminTitle) adminTitle.textContent = t('adminTitle');
+  const adminSub = document.getElementById('admin-login-sub');
+  if(adminSub) adminSub.textContent = t('adminSub');
+  const adminSignIn = document.getElementById('admin-signin-btn');
+  if(adminSignIn) adminSignIn.textContent = t('adminSignIn');
+
+  // Admin header
+  const adminRole = document.getElementById('admin-role-label');
+  if(adminRole) adminRole.textContent = t('adminRole');
+  const adminLogout = document.getElementById('admin-logout-btn');
+  if(adminLogout) adminLogout.textContent = t('logout');
+  const hospLogout = document.getElementById('hosp-logout-btn');
+  if(hospLogout) hospLogout.textContent = t('logout');
+
+  // Admin sidebar
+  const admLblViews = document.getElementById('adm-label-views');
+  if(admLblViews) admLblViews.textContent = t('adminViews');
+  const admLblTables = document.getElementById('adm-label-tables');
+  if(admLblTables) admLblTables.textContent = t('allTables');
+  const admOverview = document.getElementById('adm-nav-overview');
+  if(admOverview) admOverview.textContent = t('overview');
+
+  // Admin chips
+  const chipMap = {
+    'chip-adm-hospitals-txt': 'allHospitals',
+    'chip-adm-active-txt':    'activePatients',
+    'chip-adm-doctors-txt':   'allDoctors',
+    'chip-adm-scheduled-txt': 'scheduled',
+    'chip-adm-critical-txt':  'critical',
+    'chip-adm-departments-txt':'departments',
+    'chip-hosp-active-txt':   'activePatients',
+    'chip-hosp-all-txt':      'allPatients',
+    'chip-hosp-scheduled-txt':'scheduled',
+    'chip-hosp-critical-txt': 'critical',
+    'chip-hosp-doctors-txt':  'doctors',
+  };
+  Object.entries(chipMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = t(key);
+  });
+
+  // Hospital sidebar
+  const hospLblData = document.getElementById('hosp-label-mydata');
+  if(hospLblData) hospLblData.textContent = t('myData');
+  const navMap = {
+    'hosp-nav-patients':    'myPatients',
+    'hosp-nav-doctors':     'myDoctors',
+    'hosp-nav-appointments':'appointments',
+    'hosp-nav-departments': 'departments',
+    'hosp-nav-admissions':  'admissions',
+  };
+  Object.entries(navMap).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = t(key);
+  });
+
+  // Sidebar info labels
+  const sideLoggedIn = document.querySelector('#hospSidebar .sidebar-info .sidebar-info-label');
+  if(sideLoggedIn) sideLoggedIn.textContent = t('loggedInAs');
+  document.querySelectorAll('.sidebar-info .sidebar-info-label').forEach(el => {
+    if(el.textContent === 'Platform' || el.textContent === 'Plateforme') el.textContent = t('platform');
+    if(el.textContent === 'Logged in as' || el.textContent === 'Connecté en tant que') el.textContent = t('loggedInAs');
+  });
+
+  // Modal buttons
+  const saveBtn = document.querySelector('#modalOverlay .btn-green');
+  if(saveBtn) saveBtn.textContent = t('saveRecord');
+  const cancelBtn = document.querySelector('#modalOverlay .btn-ghost');
+  if(cancelBtn) cancelBtn.textContent = t('cancel');
+  const modeBadge = document.getElementById('modeBadge');
+  if(modeBadge) {
+    if(modeBadge.textContent === 'ADD' || modeBadge.textContent === 'AJOUT') modeBadge.textContent = t('modeAdd');
+    if(modeBadge.textContent === 'EDIT' || modeBadge.textContent === 'MODIFIER') modeBadge.textContent = t('modeEdit');
+  }
+
+  // Confirm modal
+  const confirmTitle = document.querySelector('.confirm-title');
+  if(confirmTitle) confirmTitle.textContent = t('confirmTitle');
+  const confirmBtns = document.querySelectorAll('.confirm-btns .btn');
+  if(confirmBtns[0]) confirmBtns[0].textContent = t('confirmCancel');
+  if(confirmBtns[1]) confirmBtns[1].textContent = t('confirmDelete');
+}
+
 // ════════════════════════════════════════════════
 // SIDEBAR TOGGLE (mobile)
 // ════════════════════════════════════════════════
@@ -598,6 +910,7 @@ async function verifyHospitalPin() {
   const meta = data.user.user_metadata;
   session = { role:'hospital', hospitalId: meta.hospital_id, hospMeta: HOSPITALS_META.find(x=>x.id===meta.hospital_id) };
   showScreen('hospitalScreen');
+  applyTranslations();
   initHospital();
 }
 
@@ -610,6 +923,7 @@ async function adminLogin() {
   if(role !== 'admin') { document.getElementById('adminError').textContent='✕ Not an admin account.'; await sb.auth.signOut(); return; }
   session = { role:'admin', hospitalId:null };
   showScreen('adminScreen');
+  applyTranslations();
   initAdmin();
 }
 
@@ -687,20 +1001,20 @@ async function renderAdminOverview() {
   const H = hosps.data||[], P=patients.data||[], D=doctors.data||[], A=admissions.data||[];
   document.getElementById('adminResults').innerHTML = `
     <div style="padding:0 0 16px">
-      <div style="font-size:18px;font-weight:600;margin-bottom:4px">System Overview</div>
-      <div style="font-size:13px;color:var(--muted)">Full visibility across all ${H.length} hospitals · Supabase Live</div>
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px">${t('overviewTitle')}</div>
+      <div style="font-size:13px;color:var(--muted)">${t('overviewSub')} ${H.length} ${t('overviewHospitals').toLowerCase()} · Supabase Live</div>
     </div>
     <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Hospitals</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--cyan)">${H.length}</div></div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('overviewHospitals')}</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--cyan)">${H.length}</div></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Patients</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--green)">${P.length}</div></div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('overviewPatients')}</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--green)">${P.length}</div></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doctors</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--yellow)">${D.length}</div></div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('overviewDoctors')}</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--yellow)">${D.length}</div></div>
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Admissions</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--purple)">${A.length}</div></div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('overviewAdmissions')}</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--purple)">${A.length}</div></div>
     </div>
-    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Hospitals — click to view patients</div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">${t('overviewClick')}</div>
     <div class="overview-grid">
       ${HOSPITALS_META.map(h => {
         const pts = P.filter(r=>r.hospital_id===h.id).length;
@@ -799,7 +1113,7 @@ async function renderTable(targetId, tableName, filter, hospId) {
     else if(tableName==='appointments') {
       const myDocIds = cachedDoctors.filter(d=>d.hospital_id===hospId).map(d=>d.id);
       if(myDocIds.length>0) query = query.in('doctor_id', myDocIds);
-      else { document.getElementById(targetId).innerHTML=`<div class="loading">No doctors found for this hospital.</div>`; return; }
+      else { document.getElementById(targetId).innerHTML=`<div class="loading">${t('noRows')}</div>`; return; }
     }
   }
 
@@ -814,19 +1128,19 @@ async function renderTable(targetId, tableName, filter, hospId) {
   document.getElementById(targetId).innerHTML = `
     <div class="result-toolbar">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        ${adminReadOnly ? '' : `<button class="btn btn-green" onclick="openAddModal('${tableName}','${targetId}',${hospId||'null'})">＋ Add Record</button>`}
-        <input class="search-box" placeholder="🔍 Search…" oninput="clientSearch(this.value,'${targetId}')">
+        ${adminReadOnly ? '' : `<button class="btn btn-green" onclick="openAddModal('${tableName}','${targetId}',${hospId||'null'})">${t('addRecord')}</button>`}
+        <input class="search-box" placeholder="${t('search')}" oninput="clientSearch(this.value,'${targetId}')">
       </div>
-      <span style="font-size:12px;color:var(--muted)"><strong style="color:var(--green)">${rows.length}</strong> record${rows.length!==1?'s':''}</span>
+      <span style="font-size:12px;color:var(--muted)"><strong style="color:var(--green)">${rows.length}</strong> ${rows.length!==1?t('records2'):t('records')}</span>
     </div>
     <div class="table-wrap">
       <table id="tbl-${targetId}">
         <thead><tr>
           ${cols.map(c=>{
-            const label=c==='hospital_id'?'Hospital':c==='doctor_id'?'Doctor':c;
+            const label=c==='hospital_id'?t('colHospital'):c==='doctor_id'?t('colDoctor'):c;
             return `<th>${label}</th>`;
           }).join('')}
-          ${adminReadOnly?'':'<th style="width:100px">Actions</th>'}
+          ${adminReadOnly?'':`<th style="width:100px">${t('colActions')}</th>`}
         </tr></thead>
         <tbody>
           ${rows.map(row=>`<tr>
@@ -851,7 +1165,7 @@ function clientSearch(val, targetId) {
 // ════════════════════════════════════════════════
 // FORMAT
 // ════════════════════════════════════════════════
-function badge(v,cls){return `<span class="badge ${cls}">${v}</span>`}
+function badge(v,cls,label){return `<span class="badge ${cls}">${label||v}</span>`}
 function fmtCell(col,val){
   if(val===null||val===undefined||val==='') return `<span class="null-val">NULL</span>`;
   const c=col.toLowerCase();
@@ -860,10 +1174,17 @@ function fmtCell(col,val){
   if(c==='id') return `<span class="col-id">${val}</span>`;
   if(['status','available','severity'].includes(c)){
     const v=String(val);
-    if(['Active','Yes','Completed','Low'].includes(v)) return badge(v,'badge-active');
-    if(['Closed','Discharged','No','Cancelled'].includes(v)) return badge(v,'badge-closed');
-    if(v==='Critical') return badge(v,'badge-critical');
-    if(['Scheduled','Moderate'].includes(v)) return badge(v,'badge-pending');
+    if(v==='Active')     return badge(v,'badge-active',t('active'));
+    if(v==='Yes')        return badge(v,'badge-active',t('yes'));
+    if(v==='Completed')  return badge(v,'badge-active',t('completed'));
+    if(v==='Low')        return badge(v,'badge-active',t('low'));
+    if(v==='Discharged') return badge(v,'badge-closed',t('discharged'));
+    if(v==='Closed')     return badge(v,'badge-closed',t('closed'));
+    if(v==='No')         return badge(v,'badge-closed',t('no'));
+    if(v==='Cancelled')  return badge(v,'badge-closed',t('cancelled'));
+    if(v==='Critical')   return badge(v,'badge-critical',t('criticalBadge'));
+    if(v==='Scheduled')  return badge(v,'badge-pending',t('scheduled2'));
+    if(v==='Moderate')   return badge(v,'badge-pending',t('moderate'));
     return v;
   }
   if(c.includes('date')) return `<span class="col-date">${val}</span>`;
@@ -938,12 +1259,12 @@ async function saveRecord() {
   if(editingRow) {
     const {error:e}=await sb.from(tableName).update(record).eq('id',editingRow.id);
     error=e;
-    if(!e) showToast('✏️',`Record updated in ${tableName}`);
+    if(!e) showToast('✏️',`${t('toastUpdated')} ${tableName}`);
   } else {
     const {data:inserted, error:e}=await sb.from(tableName).insert(record).select().single();
     error=e;
     if(!e){
-      showToast('✅',`Record added to ${tableName}`);
+      showToast('✅',`${t('toastAdded')} ${tableName}`);
       // Auto-create auth account when a new hospital is added
       if(tableName==='hospitals' && inserted) {
         showToast('⏳','Creating hospital login account…');
@@ -962,8 +1283,8 @@ async function saveRecord() {
             })
           });
           const result = await r.json();
-          if(result.success) showToast('🔐',`Login account created for ${inserted.name}!`);
-          else showToast('⚠️','Hospital saved but account creation failed: '+result.error);
+          if(result.success) showToast('🔐',`${t('toastCreated')} ${inserted.name}!`);
+          else showToast('⚠️',`${t('toastCreating')} `+result.error);
         } catch(err) {
           showToast('⚠️','Hospital saved but account creation failed: '+err.message);
         }
@@ -990,7 +1311,7 @@ async function confirmDelete(){
   const{error}=await sb.from(tableName).delete().eq('id',rowId);
   if(error){showToast('❌','Error: '+error.message);closeConfirm();return;}
   closeConfirm();
-  showToast('🗑️',`Record deleted from ${tableName}`);
+  showToast('🗑️',`${t('toastDeleted')} ${tableName}`);
   renderTable(targetId,tableName,null,hospId);
 }
 
@@ -1029,6 +1350,7 @@ async function checkSession() {
 }
 
 checkSession();
+applyTranslations();
 </script>
 </body>
 </html>
