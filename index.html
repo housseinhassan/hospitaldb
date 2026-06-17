@@ -179,6 +179,108 @@ tr:hover td{background:var(--surface2)}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE — MOBILE FIRST
+══════════════════════════════════════════════════ */
+
+/* ── HAMBURGER MENU BUTTON ── */
+.menu-btn{display:none;background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:4px 8px;line-height:1}
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:49}
+.sidebar-overlay.show{display:block}
+
+@media(max-width:768px){
+
+  /* ── LOGIN ── */
+  #loginScreen{padding:16px;align-items:flex-start;padding-top:30px}
+  .login-wrapper{max-width:100%}
+  .login-header{margin-bottom:24px}
+  .login-title{font-size:22px}
+  .login-tabs{gap:8px}
+  .login-tab{padding:7px 16px;font-size:12px}
+  .hospital-grid{grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .hosp-card{padding:12px}
+  .hosp-card-icon{width:28px;height:28px;font-size:14px;margin-bottom:8px}
+  .hosp-card-name{font-size:12px}
+  .hosp-card-meta{font-size:10px}
+  .pin-panel{padding:20px;max-width:100%}
+  .pin-key{padding:12px;font-size:16px}
+  .admin-login{padding:20px;max-width:100%}
+
+  /* ── HEADER ── */
+  .app-header{padding:0 12px}
+  .menu-btn{display:block}
+  .db-badge{display:none}
+  .header-right span{display:none}
+  .logo-text{font-size:13px}
+  .user-pill{font-size:11px;padding:3px 8px 3px 4px}
+
+  /* ── SIDEBAR ── */
+  aside{
+    position:fixed;left:-220px;top:0;bottom:0;z-index:50;
+    transition:left .25s ease;height:100vh;
+    box-shadow:4px 0 20px rgba(0,0,0,.4);
+  }
+  aside.open{left:0}
+
+  /* ── MAIN LAYOUT ── */
+  .app-body{height:calc(100vh - 52px)}
+  main{width:100%;overflow:hidden}
+
+  /* ── HOSPITAL BANNER ── */
+  .hosp-banner{padding:10px 12px;gap:10px}
+  .hosp-banner-icon{width:30px;height:30px;font-size:16px}
+  .hosp-banner-name{font-size:13px}
+  .hosp-banner-meta{font-size:10px}
+  .hosp-banner-right{gap:8px}
+  .hosp-banner-right div{font-size:14px!important}
+
+  /* ── FILTER BAR ── */
+  .filter-bar{padding:8px 12px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .filter-bar::-webkit-scrollbar{display:none}
+  .chip{font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0}
+
+  /* ── RESULTS AREA ── */
+  .results-area{padding:12px}
+
+  /* ── RESULT TOOLBAR ── */
+  .result-toolbar{flex-direction:column;align-items:flex-start;gap:8px}
+  .result-toolbar > div{width:100%;flex-wrap:wrap}
+  .search-box{width:100%!important;flex:1}
+  .btn{font-size:11px;padding:6px 12px}
+
+  /* ── TABLE ── */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
+  table{min-width:600px}
+  th{font-size:10px;padding:8px 10px}
+  td{font-size:11px;padding:7px 10px}
+
+  /* ── MODAL ── */
+  .modal{width:100%!important;max-width:100%!important;margin:0;border-radius:14px 14px 0 0;position:fixed;bottom:0;left:0;right:0;max-height:92vh}
+  .modal-overlay{align-items:flex-end}
+  .form-grid{grid-template-columns:1fr!important}
+  .form-group.full{grid-column:1!important}
+  .modal-body{padding:16px}
+  .modal-header{padding:16px}
+  .modal-footer{padding:12px 16px}
+
+  /* ── CONFIRM MODAL ── */
+  .confirm-modal{width:90%!important;padding:20px}
+
+  /* ── TOAST ── */
+  .toast{right:12px;left:12px;bottom:16px;font-size:12px}
+
+  /* ── OVERVIEW GRID ── */
+  .overview-grid{grid-template-columns:1fr 1fr!important;gap:10px}
+  .ov-name{font-size:12px}
+  .ov-meta{font-size:10px}
+  .ov-stat-val{font-size:14px}
+}
+
+@media(max-width:400px){
+  .hospital-grid{grid-template-columns:1fr}
+  .overview-grid{grid-template-columns:1fr!important}
+}
 </style>
 </head>
 <body>
@@ -240,6 +342,7 @@ tr:hover td{background:var(--surface2)}
 <div id="adminScreen" class="screen">
   <header class="app-header">
     <div class="header-left">
+      <button class="menu-btn" onclick="toggleSidebar('adminSidebar')">☰</button>
       <div class="logo"><div class="logo-icon">🏥</div><span class="logo-text">Hospital<span>DB</span></span></div>
       <div class="divider-v"></div>
       <div class="user-pill"><div class="user-pill-avatar avatar-admin">A</div><span>Administrator</span></div>
@@ -250,21 +353,22 @@ tr:hover td{background:var(--surface2)}
     </div>
   </header>
   <div class="app-body">
-    <aside>
+    <div class="sidebar-overlay" id="adminOverlay" onclick="closeSidebar('adminSidebar','adminOverlay')"></div>
+    <aside id="adminSidebar">
       <div style="padding:0 0 8px">
         <div class="sidebar-label">Admin Views</div>
-        <div class="table-item active" id="adm-overview-item" onclick="adminView('overview',this)">
+        <div class="table-item active" id="adm-overview-item" onclick="adminView('overview',this);closeSidebar('adminSidebar','adminOverlay')">
           <span class="table-icon">◉</span> Overview
         </div>
       </div>
       <div>
         <div class="sidebar-label" style="margin-top:8px">All Tables</div>
-        <div class="table-item" onclick="adminView('hospitals',this)"><span class="table-icon">▤</span> hospitals <span class="row-count" id="adm-rc-hospitals"></span></div>
-        <div class="table-item" onclick="adminView('patients',this)"><span class="table-icon">▤</span> patients <span class="row-count" id="adm-rc-patients"></span></div>
-        <div class="table-item" onclick="adminView('doctors',this)"><span class="table-icon">▤</span> doctors <span class="row-count" id="adm-rc-doctors"></span></div>
-        <div class="table-item" onclick="adminView('appointments',this)"><span class="table-icon">▤</span> appointments <span class="row-count" id="adm-rc-appointments"></span></div>
-        <div class="table-item" onclick="adminView('departments',this)"><span class="table-icon">▤</span> departments <span class="row-count" id="adm-rc-departments"></span></div>
-        <div class="table-item" onclick="adminView('admissions',this)"><span class="table-icon">▤</span> admissions <span class="row-count" id="adm-rc-admissions"></span></div>
+        <div class="table-item" onclick="adminView('hospitals',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> hospitals <span class="row-count" id="adm-rc-hospitals"></span></div>
+        <div class="table-item" onclick="adminView('patients',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> patients <span class="row-count" id="adm-rc-patients"></span></div>
+        <div class="table-item" onclick="adminView('doctors',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> doctors <span class="row-count" id="adm-rc-doctors"></span></div>
+        <div class="table-item" onclick="adminView('appointments',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> appointments <span class="row-count" id="adm-rc-appointments"></span></div>
+        <div class="table-item" onclick="adminView('departments',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> departments <span class="row-count" id="adm-rc-departments"></span></div>
+        <div class="table-item" onclick="adminView('admissions',this);closeSidebar('adminSidebar','adminOverlay')"><span class="table-icon">▤</span> admissions <span class="row-count" id="adm-rc-admissions"></span></div>
       </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-info"><div class="sidebar-info-label">Platform</div><div class="sidebar-info-val">Supabase · PostgreSQL</div></div>
@@ -287,6 +391,7 @@ tr:hover td{background:var(--surface2)}
 <div id="hospitalScreen" class="screen">
   <header class="app-header">
     <div class="header-left">
+      <button class="menu-btn" onclick="toggleSidebar('hospSidebar')">☰</button>
       <div class="logo"><div class="logo-icon">🏥</div><span class="logo-text">Hospital<span>DB</span></span></div>
       <div class="divider-v"></div>
       <div class="user-pill"><div class="user-pill-avatar avatar-hospital" id="hospPillAvatar">H</div><span id="hospPillName">Hospital</span></div>
@@ -298,14 +403,15 @@ tr:hover td{background:var(--surface2)}
   </header>
   <div class="hosp-banner" id="hospBanner"></div>
   <div class="app-body">
-    <aside>
+    <div class="sidebar-overlay" id="hospOverlay" onclick="closeSidebar('hospSidebar','hospOverlay')"></div>
+    <aside id="hospSidebar">
       <div>
         <div class="sidebar-label">My Data</div>
-        <div class="table-item active" id="hosp-patients-item" onclick="hospView('patients',this)"><span class="table-icon">▤</span> my patients <span class="row-count" id="hosp-rc-patients"></span></div>
-        <div class="table-item" onclick="hospView('doctors',this)"><span class="table-icon">▤</span> my doctors <span class="row-count" id="hosp-rc-doctors"></span></div>
-        <div class="table-item" onclick="hospView('appointments',this)"><span class="table-icon">▤</span> appointments <span class="row-count" id="hosp-rc-appointments"></span></div>
-        <div class="table-item" onclick="hospView('departments',this)"><span class="table-icon">▤</span> departments <span class="row-count" id="hosp-rc-departments"></span></div>
-        <div class="table-item" onclick="hospView('admissions',this)"><span class="table-icon">▤</span> admissions <span class="row-count" id="hosp-rc-admissions"></span></div>
+        <div class="table-item active" id="hosp-patients-item" onclick="hospView('patients',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> my patients <span class="row-count" id="hosp-rc-patients"></span></div>
+        <div class="table-item" onclick="hospView('doctors',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> my doctors <span class="row-count" id="hosp-rc-doctors"></span></div>
+        <div class="table-item" onclick="hospView('appointments',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> appointments <span class="row-count" id="hosp-rc-appointments"></span></div>
+        <div class="table-item" onclick="hospView('departments',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> departments <span class="row-count" id="hosp-rc-departments"></span></div>
+        <div class="table-item" onclick="hospView('admissions',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> admissions <span class="row-count" id="hosp-rc-admissions"></span></div>
       </div>
       <div class="sidebar-spacer"></div>
       <div class="sidebar-info"><div class="sidebar-info-label">Logged in as</div><div class="sidebar-info-val" id="hospSidebarName">—</div></div>
@@ -353,6 +459,21 @@ tr:hover td{background:var(--surface2)}
 <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg">Done.</span></div>
 
 <script>
+// ════════════════════════════════════════════════
+// SIDEBAR TOGGLE (mobile)
+// ════════════════════════════════════════════════
+function toggleSidebar(sidebarId) {
+  const sidebar = document.getElementById(sidebarId);
+  const overlayId = sidebarId === 'adminSidebar' ? 'adminOverlay' : 'hospOverlay';
+  const overlay = document.getElementById(overlayId);
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('show');
+}
+function closeSidebar(sidebarId, overlayId) {
+  document.getElementById(sidebarId).classList.remove('open');
+  document.getElementById(overlayId).classList.remove('show');
+}
+
 // ════════════════════════════════════════════════
 // SUPABASE INIT
 // ════════════════════════════════════════════════
