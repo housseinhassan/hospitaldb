@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HospitalDB — Multi-User Platform</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -281,7 +282,21 @@ tr:hover td{background:var(--surface2)}
   .hospital-grid{grid-template-columns:1fr}
   .overview-grid{grid-template-columns:1fr!important}
 }
-/* ── LANGUAGE TOGGLE ── */
+/* ── CHARTS ── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px 0}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.chart-title-icon{font-size:16px}
+.chart-wrap{position:relative;height:260px}
+.chart-wrap-sm{position:relative;height:220px}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.kpi-label{font-size:11px;color:var(--muted)}
+.kpi-value{font-size:28px;font-weight:700;font-family:var(--mono)}
+.kpi-sub{font-size:11px;color:var(--muted)}
+@media(max-width:768px){.charts-grid{grid-template-columns:1fr}.chart-card.full{grid-column:1}}
+</style>
 .lang-toggle{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:20px;overflow:hidden;flex-shrink:0}
 .lang-btn{padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);transition:all .2s;font-family:var(--sans)}
 .lang-btn.active{background:var(--cyan);color:#000}
@@ -373,6 +388,9 @@ tr:hover td{background:var(--surface2)}
         <div class="sidebar-label" id="adm-label-views">Admin Views</div>
         <div class="table-item active" id="adm-overview-item" onclick="adminView('overview',this);closeSidebar('adminSidebar','adminOverlay')">
           <span class="table-icon">◉</span> <span id="adm-nav-overview">Overview</span>
+        </div>
+        <div class="table-item" id="adm-charts-item" onclick="adminView('charts',this);closeSidebar('adminSidebar','adminOverlay')">
+          <span class="table-icon">📊</span> <span id="adm-nav-charts">Charts</span>
         </div>
       </div>
       <div>
@@ -541,8 +559,24 @@ const T = {
     colHospital:     'Hospital',
     colDoctor:       'Doctor',
     colActions:      'Actions',
-    // Table names
-    tbl_hospitals:   'hospitals',
+    // Charts
+    charts:              'Charts',
+    chartsTitle:         'Statistics Dashboard',
+    chartsSub:           'Live data across all hospitals',
+    chartPatientsByHosp: 'Patients per Hospital',
+    chartPatientStatus:  'Patient Status Breakdown',
+    chartDoctorSpec:     'Doctors by Specialty',
+    chartAdmitSeverity:  'Admissions by Severity',
+    chartApptStatus:     'Appointments by Status',
+    chartBedCapacity:    'Bed Capacity by Hospital',
+    kpiTotalHospitals:   'Total Hospitals',
+    kpiTotalPatients:    'Total Patients',
+    kpiTotalDoctors:     'Total Doctors',
+    kpiTotalAdmissions:  'Total Admissions',
+    kpiActivePatients:   'Active Patients',
+    kpiCritical:         'Critical Cases',
+    kpiScheduled:        'Scheduled Appts',
+    kpiDepts:            'Departments',
     tbl_patients:    'patients',
     tbl_doctors:     'doctors',
     tbl_appointments:'appointments',
@@ -669,8 +703,24 @@ const T = {
     colHospital:     'Hôpital',
     colDoctor:       'Médecin',
     colActions:      'Actions',
-    // Table names
-    tbl_hospitals:   'hôpitaux',
+    // Charts
+    charts:              'Graphiques',
+    chartsTitle:         'Tableau de Bord Statistique',
+    chartsSub:           'Données en direct de tous les hôpitaux',
+    chartPatientsByHosp: 'Patients par Hôpital',
+    chartPatientStatus:  'Répartition des Statuts Patients',
+    chartDoctorSpec:     'Médecins par Spécialité',
+    chartAdmitSeverity:  'Admissions par Gravité',
+    chartApptStatus:     'Rendez-vous par Statut',
+    chartBedCapacity:    'Capacité en Lits par Hôpital',
+    kpiTotalHospitals:   'Total Hôpitaux',
+    kpiTotalPatients:    'Total Patients',
+    kpiTotalDoctors:     'Total Médecins',
+    kpiTotalAdmissions:  'Total Admissions',
+    kpiActivePatients:   'Patients Actifs',
+    kpiCritical:         'Cas Critiques',
+    kpiScheduled:        'RDV Planifiés',
+    kpiDepts:            'Départements',
     tbl_patients:    'patients',
     tbl_doctors:     'médecins',
     tbl_appointments:'rendez-vous',
@@ -848,6 +898,8 @@ function applyTranslations() {
 
   // Admin sidebar table names
   const admNavMap = {
+    'adm-nav-overview':     'overview',
+    'adm-nav-charts':       'charts',
     'adm-nav-hospitals':    'tbl_hospitals',
     'adm-nav-patients':     'tbl_patients',
     'adm-nav-doctors':      'tbl_doctors',
@@ -961,7 +1013,12 @@ function setLang(l) {
   // Re-render current view so table headers, badges and buttons update
   if(session.role === 'admin') {
     if(document.getElementById('adminFilterBar').style.display === 'none') {
-      renderAdminOverview();
+      // check if charts or overview
+      if(document.getElementById('adm-charts-item')?.classList.contains('active')) {
+        renderCharts();
+      } else {
+        renderAdminOverview();
+      }
     } else {
       renderTable('adminResults', currentTable, null, null);
     }
@@ -1052,6 +1109,7 @@ async function adminLogin() {
 
 async function logout() {
   await sb.auth.signOut();
+  destroyCharts();
   session={role:null,hospitalId:null};
   pinBuffer=''; selectedHospId=null;
   document.querySelectorAll('.hosp-card').forEach(c=>c.classList.remove('selected'));
@@ -1074,8 +1132,181 @@ function showScreen(id) {
 }
 
 // ════════════════════════════════════════════════
-// ADMIN INIT
+// CHARTS DASHBOARD
 // ════════════════════════════════════════════════
+let chartInstances = {};
+
+function destroyCharts() {
+  Object.values(chartInstances).forEach(c => { try { c.destroy(); } catch(e) {} });
+  chartInstances = {};
+}
+
+async function renderCharts() {
+  destroyCharts();
+  document.getElementById('adminResults').innerHTML = `<div class="loading"><div class="spinner"></div> ${t('loading')}…</div>`;
+
+  // Fetch all data
+  const [hospsR, patientsR, doctorsR, admissionsR, apptsR, deptsR] = await Promise.all([
+    sb.from('hospitals').select('*'),
+    sb.from('patients').select('*'),
+    sb.from('doctors').select('*'),
+    sb.from('admissions').select('*'),
+    sb.from('appointments').select('*'),
+    sb.from('departments').select('*'),
+  ]);
+
+  const hosps      = hospsR.data    || [];
+  const patients   = patientsR.data || [];
+  const doctors    = doctorsR.data  || [];
+  const admissions = admissionsR.data || [];
+  const appts      = apptsR.data    || [];
+  const depts      = deptsR.data    || [];
+
+  // ── KPIs ──
+  const activeCount   = patients.filter(p=>p.status==='Active').length;
+  const criticalCount = patients.filter(p=>p.status==='Critical').length;
+  const scheduledCount= appts.filter(a=>a.status==='Scheduled').length;
+
+  // ── Chart data ──
+  // 1. Patients per hospital
+  const patByHosp = hosps.map(h => ({
+    label: h.name.length > 18 ? h.name.slice(0,18)+'…' : h.name,
+    value: patients.filter(p=>p.hospital_id===h.id).length
+  }));
+
+  // 2. Patient status
+  const statuses = ['Active','Discharged','Critical'];
+  const statusCounts = statuses.map(s => patients.filter(p=>p.status===s).length);
+  const statusLabels = statuses.map(s => t(s.toLowerCase()) || s);
+
+  // 3. Doctors by specialty
+  const specMap = {};
+  doctors.forEach(d => { specMap[d.specialty] = (specMap[d.specialty]||0)+1; });
+  const specLabels = Object.keys(specMap);
+  const specValues = Object.values(specMap);
+
+  // 4. Admissions by severity
+  const sevMap = {Low:0, Moderate:0, Critical:0};
+  admissions.forEach(a => { if(sevMap[a.severity]!==undefined) sevMap[a.severity]++; });
+  const sevLabels = Object.keys(sevMap).map(s => t(s.toLowerCase())||s);
+  const sevValues = Object.values(sevMap);
+
+  // 5. Appointments by status
+  const apptMap = {Scheduled:0, Completed:0, Cancelled:0};
+  appts.forEach(a => { if(apptMap[a.status]!==undefined) apptMap[a.status]++; });
+  const apptLabels = Object.keys(apptMap).map(s => t(s==='Scheduled'?'scheduled2':s==='Completed'?'completed':'cancelled')||s);
+  const apptValues = Object.values(apptMap);
+
+  // 6. Bed capacity
+  const bedLabels = hosps.map(h => h.name.length>14?h.name.slice(0,14)+'…':h.name);
+  const bedValues = hosps.map(h => h.bed_capacity || 0);
+
+  // ── COLORS ──
+  const CYAN   = '#38bdf8';
+  const GREEN  = '#4ade80';
+  const YELLOW = '#fbbf24';
+  const RED    = '#f87171';
+  const PURPLE = '#c084fc';
+  const ORANGE = '#fb923c';
+  const COLORS = [CYAN,GREEN,YELLOW,RED,PURPLE,ORANGE,'#34d399','#60a5fa','#a78bfa','#fb7185','#f472b6','#fbbf24','#38bdf8'];
+
+  const chartDefaults = {
+    plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } },
+    scales: {
+      x: { ticks: { color: '#64748b', font:{size:10} }, grid: { color: '#1e2a3a' } },
+      y: { ticks: { color: '#64748b', font:{size:10} }, grid: { color: '#1e2a3a' } }
+    }
+  };
+
+  document.getElementById('adminResults').innerHTML = `
+    <div style="padding:0 0 4px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px" id="charts-title">${t('chartsTitle')}</div>
+      <div style="font-size:13px;color:var(--muted)" id="charts-sub">${t('chartsSub')}</div>
+    </div>
+
+    <div class="kpi-grid" style="margin-top:16px">
+      <div class="kpi-card"><div class="kpi-label" id="kpi-hosp-lbl">${t('kpiTotalHospitals')}</div><div class="kpi-value" style="color:var(--cyan)">${hosps.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label" id="kpi-pat-lbl">${t('kpiTotalPatients')}</div><div class="kpi-value" style="color:var(--green)">${patients.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label" id="kpi-doc-lbl">${t('kpiTotalDoctors')}</div><div class="kpi-value" style="color:var(--yellow)">${doctors.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label" id="kpi-adm-lbl">${t('kpiTotalAdmissions')}</div><div class="kpi-value" style="color:var(--purple)">${admissions.length}</div></div>
+      <div class="kpi-card"><div class="kpi-label" id="kpi-active-lbl">${t('kpiActivePatients')}</div><div class="kpi-value" style="color:var(--green)">${activeCount}</div></div>
+      <div class="kpi-card"><div class="kpi-label" id="kpi-crit-lbl">${t('kpiCritical')}</div><div class="kpi-value" style="color:var(--red)">${criticalCount}</div></div>
+      <div class="kpi-card"><div class="kpi-label" id="kpi-sched-lbl">${t('kpiScheduled')}</div><div class="kpi-value" style="color:var(--cyan)">${scheduledCount}</div></div>
+      <div class="kpi-card"><div class="kpi-label" id="kpi-dept-lbl">${t('kpiDepts')}</div><div class="kpi-value" style="color:var(--orange)">${depts.length}</div></div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title"><span class="chart-title-icon">👥</span><span id="chart-pat-hosp-title">${t('chartPatientsByHosp')}</span></div>
+        <div class="chart-wrap"><canvas id="chartPatByHosp"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-icon">🔵</span><span id="chart-pat-status-title">${t('chartPatientStatus')}</span></div>
+        <div class="chart-wrap-sm"><canvas id="chartPatStatus"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-icon">🚨</span><span id="chart-admit-title">${t('chartAdmitSeverity')}</span></div>
+        <div class="chart-wrap-sm"><canvas id="chartAdmitSeverity"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-icon">👨‍⚕️</span><span id="chart-doc-spec-title">${t('chartDoctorSpec')}</span></div>
+        <div class="chart-wrap"><canvas id="chartDocSpec"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title"><span class="chart-title-icon">📅</span><span id="chart-appt-title">${t('chartApptStatus')}</span></div>
+        <div class="chart-wrap"><canvas id="chartApptStatus"></canvas></div>
+      </div>
+      <div class="chart-card full">
+        <div class="chart-title"><span class="chart-title-icon">🛏️</span><span id="chart-bed-title">${t('chartBedCapacity')}</span></div>
+        <div class="chart-wrap"><canvas id="chartBedCapacity"></canvas></div>
+      </div>
+    </div>`;
+
+  // ── Render charts ──
+  Chart.defaults.color = '#94a3b8';
+
+  // 1. Patients per hospital — horizontal bar
+  chartInstances.patByHosp = new Chart(document.getElementById('chartPatByHosp'), {
+    type: 'bar',
+    data: { labels: patByHosp.map(x=>x.label), datasets: [{ label: t('kpiTotalPatients'), data: patByHosp.map(x=>x.value), backgroundColor: COLORS, borderRadius: 6, borderSkipped: false }] },
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#64748b',font:{size:10}}, grid:{color:'#1e2a3a'} }, y: { ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'#1e2a3a'} } } }
+  });
+
+  // 2. Patient status — doughnut
+  chartInstances.patStatus = new Chart(document.getElementById('chartPatStatus'), {
+    type: 'doughnut',
+    data: { labels: statusLabels, datasets: [{ data: statusCounts, backgroundColor: [GREEN, YELLOW, RED], borderWidth: 0 }] },
+    options: { plugins: { legend: { position:'bottom', labels:{color:'#94a3b8',font:{size:11},padding:12} } }, cutout: '65%' }
+  });
+
+  // 3. Admissions by severity — doughnut
+  chartInstances.admitSev = new Chart(document.getElementById('chartAdmitSeverity'), {
+    type: 'doughnut',
+    data: { labels: sevLabels, datasets: [{ data: sevValues, backgroundColor: [GREEN, YELLOW, RED], borderWidth: 0 }] },
+    options: { plugins: { legend: { position:'bottom', labels:{color:'#94a3b8',font:{size:11},padding:12} } }, cutout: '65%' }
+  });
+
+  // 4. Doctors by specialty — horizontal bar
+  chartInstances.docSpec = new Chart(document.getElementById('chartDocSpec'), {
+    type: 'bar',
+    data: { labels: specLabels, datasets: [{ label: t('kpiTotalDoctors'), data: specValues, backgroundColor: PURPLE, borderRadius: 4, borderSkipped: false }] },
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend:{display:false} }, scales: { x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#94a3b8',font:{size:9}},grid:{color:'#1e2a3a'}} } }
+  });
+
+  // 5. Appointments by status — pie
+  chartInstances.apptStatus = new Chart(document.getElementById('chartApptStatus'), {
+    type: 'pie',
+    data: { labels: apptLabels, datasets: [{ data: apptValues, backgroundColor: [CYAN, GREEN, RED], borderWidth: 0 }] },
+    options: { plugins: { legend: { position:'bottom', labels:{color:'#94a3b8',font:{size:11},padding:12} } } }
+  });
+
+  // 6. Bed capacity — bar
+  chartInstances.bedCap = new Chart(document.getElementById('chartBedCapacity'), {
+    type: 'bar',
+    data: { labels: bedLabels, datasets: [{ label: t('chartBedCapacity'), data: bedValues, backgroundColor: CYAN, borderRadius: 6, borderSkipped: false }] },
+    options: { ...chartDefaults, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2a3a'}} } }
+  });
+}
 async function initAdmin() {
   currentContext='admin';
   await loadCaches();
@@ -1106,6 +1337,9 @@ function adminView(view, el) {
   if(view==='overview') {
     document.getElementById('adminFilterBar').style.display='none';
     renderAdminOverview();
+  } else if(view==='charts') {
+    document.getElementById('adminFilterBar').style.display='none';
+    renderCharts();
   } else {
     document.getElementById('adminFilterBar').style.display='';
     currentTable=view;
