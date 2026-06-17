@@ -482,28 +482,33 @@ const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ════════════════════════════════════════════════
-// HOSPITALS META (for login cards — no DB call needed)
+// HOSPITALS META — loaded dynamically from Supabase
 // ════════════════════════════════════════════════
-const HOSPITALS_META = [
-  {id:1, name:'Metro General Hospital',        city:'New York',      state:'NY', type:'Public',     beds:850,  icon:'🏛️', color:'#38bdf8'},
-  {id:2, name:"St. Mary's Medical Center",     city:'Los Angeles',   state:'CA', type:'Private',    beds:620,  icon:'⛪', color:'#4ade80'},
-  {id:3, name:"Lakeside Children's Hospital",  city:'Chicago',       state:'IL', type:'Non-profit', beds:310,  icon:'🏥', color:'#c084fc'},
-  {id:4, name:'Sunrise Health System',         city:'Houston',       state:'TX', type:'Private',    beds:940,  icon:'🌅', color:'#fb923c'},
-  {id:5, name:'Pacific Coast Medical',         city:'San Francisco', state:'CA', type:'Private',    beds:480,  icon:'🌊', color:'#fbbf24'},
-  {id:6, name:'Riverside Community Hospital',  city:'Phoenix',       state:'AZ', type:'Public',     beds:290,  icon:'🏞️', color:'#34d399'},
-  {id:7, name:'Northbrook Trauma Center',      city:'Philadelphia',  state:'PA', type:'Public',     beds:560,  icon:'🚑', color:'#f87171'},
-  {id:8, name:'Maplewood Veterans Hospital',   city:'San Antonio',   state:'TX', type:'Federal',    beds:400,  icon:'🎖️', color:'#60a5fa'},
-  {id:9, name:'Coastal Rehabilitation Inst.',  city:'Miami',         state:'FL', type:'Non-profit', beds:180,  icon:'🌴', color:'#a78bfa'},
-  {id:10,name:'Highland Psychiatric Center',   city:'Seattle',       state:'WA', type:'State',      beds:220,  icon:'🧠', color:'#f472b6'},
-  {id:11,name:"St. Luke's Heart Institute",    city:'Boston',        state:'MA', type:'Private',    beds:370,  icon:'❤️', color:'#fb7185'},
-];
+let HOSPITALS_META = [];
+
+async function loadAndBuildHospitalCards() {
+  document.getElementById('hospitalGrid').innerHTML = `
+    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">
+      <div class="spinner" style="margin:0 auto 12px"></div>Loading hospitals…
+    </div>`;
+  const { data, error } = await sb.from('hospitals').select('*').eq('status','Active').order('id');
+  if(error || !data) {
+    document.getElementById('hospitalGrid').innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--red)">
+        Failed to load hospitals. Please refresh.
+      </div>`;
+    return;
+  }
+  HOSPITALS_META = data;
+  buildHospitalCards();
+}
 
 // ════════════════════════════════════════════════
 // TABLE SCHEMAS (for forms only — no types stored in DB)
 // ════════════════════════════════════════════════
 const SCHEMAS = {
-  hospitals:    { cols:['name','city','state','type','bed_capacity','established','status'],
-                  types:['text','text','text',['Public','Private','Non-profit','Federal','State'],'number','date',['Active','Closed']] },
+  hospitals:    { cols:['name','city','state','type','bed_capacity','established','status','icon','color','pin'],
+                  types:['text','text','text',['Public','Private','Non-profit','Federal','State'],'number','date',['Active','Closed'],'text','text','text'] },
   patients:     { cols:['first_name','last_name','dob','gender','blood_type','hospital_id','doctor_id','status'],
                   types:['text','text','date',['M','F'],['O+','O-','A+','A-','B+','B-','AB+','AB-','Unknown'],'number','doctor_select',['Active','Discharged','Critical']] },
   doctors:      { cols:['name','specialty','hospital_id','years_exp','license_no','available'],
@@ -544,9 +549,9 @@ function buildHospitalCards() {
   const typeClass = {Public:'badge-public',Private:'badge-private','Non-profit':'badge-nonprofit',Federal:'badge-federal',State:'badge-state'};
   document.getElementById('hospitalGrid').innerHTML = HOSPITALS_META.map(h => `
     <div class="hosp-card fade-in" id="hcard-${h.id}" onclick="selectHospital(${h.id})">
-      <div class="hosp-card-icon" style="background:${h.color}22;color:${h.color}">${h.icon}</div>
+      <div class="hosp-card-icon" style="background:${h.color||'#38bdf8'}22;color:${h.color||'#38bdf8'}">${h.icon||'🏥'}</div>
       <div class="hosp-card-name">${h.name}</div>
-      <div class="hosp-card-meta">${h.city}, ${h.state} · ${h.beds} beds</div>
+      <div class="hosp-card-meta">${h.city}, ${h.state} · ${h.bed_capacity} beds</div>
       <div class="hosp-card-badge ${typeClass[h.type]||'badge-public'}">${h.type}</div>
     </div>`).join('');
 }
@@ -575,12 +580,10 @@ function pinBack()  { pinBuffer=pinBuffer.slice(0,-1); updatePinDots(); }
 function pinClear() { pinBuffer=''; updatePinDots(); document.getElementById('pinError').textContent=''; }
 
 async function verifyHospitalPin() {
-  // PIN maps to hospital email: hospital{id}@hospitaldb.com, password Hospital{id}@1234!
   const h = HOSPITALS_META.find(x => x.id===selectedHospId);
-  // PIN is the last 4 digits of "Hospital{id}@1234!" → always "1234" in our setup
-  // For real security you'd store hashed PINs in DB
-  // Here PIN = "1234" for all hospitals (matches what we set up)
-  if(pinBuffer !== '1234') {
+  // Check PIN against the pin column in the hospitals table
+  const correctPin = h.pin || '1234';
+  if(pinBuffer !== correctPin) {
     document.getElementById('pinError').textContent = '✕ Incorrect PIN. Try again.';
     pinBuffer=''; updatePinDots(); return;
   }
@@ -623,8 +626,8 @@ async function logout() {
   document.querySelector('.login-tab').classList.add('active');
   document.getElementById('hospitalPicker').style.display='';
   document.getElementById('adminPicker').style.display='none';
-  // Rebuild hospital cards
-  buildHospitalCards();
+  // Rebuild hospital cards dynamically from Supabase
+  loadAndBuildHospitalCards();
   showScreen('loginScreen');
 }
 
@@ -985,15 +988,16 @@ document.getElementById('confirmOverlay').addEventListener('click',e=>{if(e.targ
 // ════════════════════════════════════════════════
 async function checkSession() {
   const { data:{ session: s } } = await sb.auth.getSession();
-  if(!s) { buildHospitalCards(); return; }
+  if(!s) { loadAndBuildHospitalCards(); return; }
   const meta = s.user.user_metadata;
   if(meta.role==='admin') {
     session={role:'admin',hospitalId:null};
     showScreen('adminScreen'); initAdmin();
   } else if(meta.role==='hospital') {
+    await loadAndBuildHospitalCards();
     session={role:'hospital',hospitalId:meta.hospital_id,hospMeta:HOSPITALS_META.find(x=>x.id===meta.hospital_id)};
     showScreen('hospitalScreen'); initHospital();
-  } else { buildHospitalCards(); }
+  } else { loadAndBuildHospitalCards(); }
 }
 
 checkSession();
