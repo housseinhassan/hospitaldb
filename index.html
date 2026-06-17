@@ -296,7 +296,31 @@ tr:hover td{background:var(--surface2)}
 .kpi-value{font-size:28px;font-weight:700;font-family:var(--mono)}
 .kpi-sub{font-size:11px;color:var(--muted)}
 @media(max-width:768px){.charts-grid{grid-template-columns:1fr}.chart-card.full{grid-column:1}}
-/* ── LANGUAGE TOGGLE ── */
+/* ── ALERT BELL ── */
+.alert-bell{background:none;border:none;cursor:pointer;font-size:18px;position:relative;padding:4px 6px;border-radius:8px;transition:background .2s;line-height:1}
+.alert-bell:hover{background:var(--surface2)}
+.alert-badge{position:absolute;top:-2px;right:-2px;background:var(--red);color:#fff;font-size:10px;font-weight:700;font-family:var(--mono);min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;border:2px solid var(--bg);animation:pulse-badge 2s infinite}
+.alert-badge.hidden{display:none}
+@keyframes pulse-badge{0%,100%{box-shadow:0 0 0 0 rgba(248,113,113,.6)}50%{box-shadow:0 0 0 6px rgba(248,113,113,0)}}
+
+/* ── ALERT PANEL ── */
+.alert-panel{position:absolute;top:52px;right:0;width:380px;max-width:95vw;background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--red);border-radius:0 0 12px 12px;z-index:60;box-shadow:0 12px 32px rgba(0,0,0,.5);max-height:420px;display:flex;flex-direction:column}
+.alert-panel.hidden{display:none}
+.alert-panel-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.alert-panel-title{font-size:14px;font-weight:600;color:var(--red)}
+.alert-panel-body{overflow-y:auto;flex:1}
+.alert-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer}
+.alert-row:hover{background:var(--surface2)}
+.alert-row:last-child{border-bottom:none}
+.alert-icon{width:36px;height:36px;background:#3b0764;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.alert-info{flex:1;min-width:0}
+.alert-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.alert-hosp{font-size:11px;color:var(--cyan);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-empty{padding:32px;text-align:center;color:var(--muted);font-size:13px}
+.alert-empty-icon{font-size:32px;margin-bottom:8px}
+#adminScreen,#hospitalScreen{position:relative}
+</style>
 .lang-toggle{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:20px;overflow:hidden;flex-shrink:0}
 .lang-btn{padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);transition:all .2s;font-family:var(--sans)}
 .lang-btn.active{background:var(--cyan);color:#000}
@@ -377,10 +401,20 @@ tr:hover td{background:var(--surface2)}
         <button class="lang-btn active" id="admin-lang-en" onclick="setLang('en')">EN</button>
         <button class="lang-btn" id="admin-lang-fr" onclick="setLang('fr')">FR</button>
       </div>
+      <button class="alert-bell" id="admin-alert-bell" onclick="toggleAlertPanel('admin')" title="Critical Alerts">
+        🔔 <span class="alert-badge hidden" id="admin-alert-count">0</span>
+      </button>
       <span style="font-size:12px;color:var(--muted)"><span class="status-dot"></span>Supabase · Live</span>
       <button class="btn btn-ghost btn-sm" id="admin-logout-btn" onclick="logout()">← Logout</button>
     </div>
   </header>
+  <div class="alert-panel hidden" id="admin-alert-panel">
+    <div class="alert-panel-header">
+      <span class="alert-panel-title" id="admin-alert-title">🚨 Critical Alerts</span>
+      <button class="close-btn" onclick="toggleAlertPanel('admin')">✕</button>
+    </div>
+    <div class="alert-panel-body" id="admin-alert-body"></div>
+  </div>
   <div class="app-body">
     <div class="sidebar-overlay" id="adminOverlay" onclick="closeSidebar('adminSidebar','adminOverlay')"></div>
     <aside id="adminSidebar">
@@ -433,10 +467,20 @@ tr:hover td{background:var(--surface2)}
         <button class="lang-btn active" id="hosp-lang-en" onclick="setLang('en')">EN</button>
         <button class="lang-btn" id="hosp-lang-fr" onclick="setLang('fr')">FR</button>
       </div>
+      <button class="alert-bell" id="hosp-alert-bell" onclick="toggleAlertPanel('hosp')" title="Critical Alerts">
+        🔔 <span class="alert-badge hidden" id="hosp-alert-count">0</span>
+      </button>
       <span style="font-size:12px;color:var(--muted)"><span class="status-dot"></span>Supabase · Live</span>
       <button class="btn btn-ghost btn-sm" id="hosp-logout-btn" onclick="logout()">← Logout</button>
     </div>
   </header>
+  <div class="alert-panel hidden" id="hosp-alert-panel">
+    <div class="alert-panel-header">
+      <span class="alert-panel-title" id="hosp-alert-title">🚨 Critical Alerts</span>
+      <button class="close-btn" onclick="toggleAlertPanel('hosp')">✕</button>
+    </div>
+    <div class="alert-panel-body" id="hosp-alert-body"></div>
+  </div>
   <div class="hosp-banner" id="hospBanner"></div>
   <div class="app-body">
     <div class="sidebar-overlay" id="hospOverlay" onclick="closeSidebar('hospSidebar','hospOverlay')"></div>
@@ -559,8 +603,12 @@ const T = {
     colHospital:     'Hospital',
     colDoctor:       'Doctor',
     colActions:      'Actions',
-    // Charts
-    charts:              'Charts',
+    // Alerts
+    alertTitle:      '🚨 Critical Alerts',
+    alertEmpty:      'No critical patients',
+    alertEmptyIcon:  '✅',
+    alertRoom:       'Room',
+    alertRefresh:    'Refreshes every 60s',
     chartsTitle:         'Statistics Dashboard',
     chartsSub:           'Live data across all hospitals',
     chartPatientsByHosp: 'Patients per Hospital',
@@ -703,8 +751,12 @@ const T = {
     colHospital:     'Hôpital',
     colDoctor:       'Médecin',
     colActions:      'Actions',
-    // Charts
-    charts:              'Graphiques',
+    // Alerts
+    alertTitle:      '🚨 Alertes Critiques',
+    alertEmpty:      'Aucun patient critique',
+    alertEmptyIcon:  '✅',
+    alertRoom:       'Chambre',
+    alertRefresh:    'Actualise toutes les 60s',
     chartsTitle:         'Tableau de Bord Statistique',
     chartsSub:           'Données en direct de tous les hôpitaux',
     chartPatientsByHosp: 'Patients par Hôpital',
@@ -895,6 +947,15 @@ function applyTranslations() {
   const confirmBtns = document.querySelectorAll('.confirm-btns .btn');
   if(confirmBtns[0]) confirmBtns[0].textContent = t('confirmCancel');
   if(confirmBtns[1]) confirmBtns[1].textContent = t('confirmDelete');
+
+  // Alert panel titles
+  ['admin','hosp'].forEach(prefix => {
+    const titleEl = document.getElementById(`${prefix}-alert-title`);
+    if(titleEl) titleEl.textContent = t('alertTitle');
+  });
+  // Re-render alert bodies if open
+  if(!document.getElementById('admin-alert-panel')?.classList.contains('hidden')) renderAlertPanel('admin');
+  if(!document.getElementById('hosp-alert-panel')?.classList.contains('hidden')) renderAlertPanel('hosp');
 
   // Admin sidebar table names
   const admNavMap = {
@@ -1092,6 +1153,7 @@ async function verifyHospitalPin() {
   showScreen('hospitalScreen');
   applyTranslations();
   initHospital();
+  startAlertPolling();
 }
 
 async function adminLogin() {
@@ -1105,11 +1167,13 @@ async function adminLogin() {
   showScreen('adminScreen');
   applyTranslations();
   initAdmin();
+  startAlertPolling();
 }
 
 async function logout() {
   await sb.auth.signOut();
   destroyCharts();
+  stopAlertPolling();
   session={role:null,hospitalId:null};
   pinBuffer=''; selectedHospId=null;
   document.querySelectorAll('.hosp-card').forEach(c=>c.classList.remove('selected'));
@@ -1130,6 +1194,111 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
+
+// ════════════════════════════════════════════════
+// CRITICAL ALERTS
+// ════════════════════════════════════════════════
+let alertData = [];
+let alertInterval = null;
+
+async function fetchCriticalAlerts() {
+  const hospId = session.role === 'hospital' ? session.hospitalId : null;
+  let query = sb.from('patients').select('id,first_name,last_name,status,hospital_id,doctor_id').eq('status','Critical');
+  if(hospId) query = query.eq('hospital_id', hospId);
+  const { data } = await query;
+  alertData = data || [];
+
+  const count = alertData.length;
+  const prefix = session.role === 'admin' ? 'admin' : 'hosp';
+
+  // Update badge
+  const badge = document.getElementById(`${prefix}-alert-count`);
+  if(badge) {
+    badge.textContent = count;
+    badge.classList.toggle('hidden', count === 0);
+  }
+
+  // Re-render panel if open
+  const panel = document.getElementById(`${prefix}-alert-panel`);
+  if(panel && !panel.classList.contains('hidden')) renderAlertPanel(prefix);
+}
+
+function renderAlertPanel(prefix) {
+  const body = document.getElementById(`${prefix}-alert-body`);
+  if(!body) return;
+
+  if(alertData.length === 0) {
+    body.innerHTML = `
+      <div class="alert-empty">
+        <div class="alert-empty-icon">${t('alertEmptyIcon')}</div>
+        <div>${t('alertEmpty')}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px">${t('alertRefresh')}</div>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = alertData.map(p => {
+    const hosp = cachedHospitals.find(h => h.id === p.hospital_id);
+    const hospName = hosp ? hosp.name : `Hospital #${p.hospital_id}`;
+    const admission = ''; // could add room lookup later
+    return `
+      <div class="alert-row" onclick="goToPatient(${p.id})">
+        <div class="alert-icon">🚨</div>
+        <div class="alert-info">
+          <div class="alert-name">${p.first_name} ${p.last_name}</div>
+          <div class="alert-hosp">${hospName}</div>
+          <div class="alert-meta">ID: ${p.id}</div>
+        </div>
+        <span class="badge badge-critical" style="flex-shrink:0">${t('criticalBadge')}</span>
+      </div>`;
+  }).join('') + `<div style="padding:8px 16px;font-size:10px;color:var(--muted);text-align:center">${t('alertRefresh')}</div>`;
+}
+
+function toggleAlertPanel(prefix) {
+  const panel = document.getElementById(`${prefix}-alert-panel`);
+  if(!panel) return;
+  const isHidden = panel.classList.contains('hidden');
+  // Close all panels first
+  document.querySelectorAll('.alert-panel').forEach(p => p.classList.add('hidden'));
+  if(isHidden) {
+    panel.classList.remove('hidden');
+    renderAlertPanel(prefix);
+  }
+}
+
+function goToPatient(patientId) {
+  // Close alert panel and navigate to patients table filtered
+  document.querySelectorAll('.alert-panel').forEach(p => p.classList.add('hidden'));
+  if(session.role === 'admin') {
+    adminView('patients', document.querySelector('#adminSidebar .table-item:nth-child(3)'));
+    renderTable('adminResults','patients',{column:'status',value:'Critical'},null);
+  } else {
+    hospView('patients', document.getElementById('hosp-patients-item'));
+    renderTable('hospResults','patients',{column:'status',value:'Critical'},session.hospitalId);
+  }
+}
+
+function startAlertPolling() {
+  fetchCriticalAlerts();
+  if(alertInterval) clearInterval(alertInterval);
+  alertInterval = setInterval(fetchCriticalAlerts, 60000);
+}
+
+function stopAlertPolling() {
+  if(alertInterval) { clearInterval(alertInterval); alertInterval = null; }
+  alertData = [];
+  ['admin','hosp'].forEach(prefix => {
+    const badge = document.getElementById(`${prefix}-alert-count`);
+    if(badge) badge.classList.add('hidden');
+  });
+}
+
+// Close alert panel when clicking outside
+document.addEventListener('click', e => {
+  if(!e.target.closest('.alert-bell') && !e.target.closest('.alert-panel')) {
+    document.querySelectorAll('.alert-panel').forEach(p => p.classList.add('hidden'));
+  }
+});
 
 // ════════════════════════════════════════════════
 // CHARTS DASHBOARD
@@ -1703,10 +1872,12 @@ async function checkSession() {
   if(meta.role==='admin') {
     session={role:'admin',hospitalId:null};
     showScreen('adminScreen'); initAdmin();
+    startAlertPolling();
   } else if(meta.role==='hospital') {
     await loadAndBuildHospitalCards();
     session={role:'hospital',hospitalId:meta.hospital_id,hospMeta:HOSPITALS_META.find(x=>x.id===meta.hospital_id)};
     showScreen('hospitalScreen'); initHospital();
+    startAlertPolling();
   } else { loadAndBuildHospitalCards(); }
 }
 
@@ -1715,3 +1886,4 @@ applyTranslations();
 </script>
 </body>
 </html>
+
