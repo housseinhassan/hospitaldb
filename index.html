@@ -1269,7 +1269,7 @@ async function renderCharts() {
   chartInstances.patByHosp = new Chart(document.getElementById('chartPatByHosp'), {
     type: 'bar',
     data: { labels: patByHosp.map(x=>x.label), datasets: [{ label: t('kpiTotalPatients'), data: patByHosp.map(x=>x.value), backgroundColor: COLORS, borderRadius: 6, borderSkipped: false }] },
-    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#64748b',font:{size:10}}, grid:{color:'#1e2a3a'} }, y: { ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'#1e2a3a'} } } }
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#64748b',font:{size:10}, stepSize:1, callback: val => Number.isInteger(val)?val:''}, grid:{color:'#1e2a3a'} }, y: { ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'#1e2a3a'} } } }
   });
 
   // 2. Patient status — doughnut
@@ -1290,7 +1290,7 @@ async function renderCharts() {
   chartInstances.docSpec = new Chart(document.getElementById('chartDocSpec'), {
     type: 'bar',
     data: { labels: specLabels, datasets: [{ label: t('kpiTotalDoctors'), data: specValues, backgroundColor: PURPLE, borderRadius: 4, borderSkipped: false }] },
-    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend:{display:false} }, scales: { x:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#94a3b8',font:{size:9}},grid:{color:'#1e2a3a'}} } }
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend:{display:false} }, scales: { x:{ticks:{color:'#64748b',font:{size:10}, stepSize:1, callback: val => Number.isInteger(val)?val:''},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#94a3b8',font:{size:9}},grid:{color:'#1e2a3a'}} } }
   });
 
   // 5. Appointments by status — pie
@@ -1304,7 +1304,7 @@ async function renderCharts() {
   chartInstances.bedCap = new Chart(document.getElementById('chartBedCapacity'), {
     type: 'bar',
     data: { labels: bedLabels, datasets: [{ label: t('chartBedCapacity'), data: bedValues, backgroundColor: CYAN, borderRadius: 6, borderSkipped: false }] },
-    options: { ...chartDefaults, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#64748b',font:{size:10}},grid:{color:'#1e2a3a'}} } }
+    options: { ...chartDefaults, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#64748b',font:{size:10}, stepSize:1, callback: val => Number.isInteger(val)?val:''},grid:{color:'#1e2a3a'}} } }
   });
 }
 async function initAdmin() {
