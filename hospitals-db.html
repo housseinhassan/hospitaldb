@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HospitalDB — Multi-User Platform</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2331;--border:#2a3441;
+  --cyan:#38bdf8;--cyan-dim:#0e4966;--green:#4ade80;--yellow:#fbbf24;
+  --red:#f87171;--purple:#c084fc;--orange:#fb923c;--text:#e2e8f0;--muted:#64748b;
+  --mono:'JetBrains Mono',monospace;--sans:'Inter',sans-serif;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .25s ease both}
+.screen{display:none;flex:1;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── LOGIN ── */
+#loginScreen{align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-wrapper{width:100%;max-width:900px}
+.login-header{text-align:center;margin-bottom:40px}
+.login-logo{width:52px;height:52px;background:var(--cyan);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px}
+.login-title{font-size:28px;font-weight:600;letter-spacing:-0.5px}
+.login-title span{color:var(--cyan)}
+.login-sub{color:var(--muted);font-size:14px;margin-top:6px}
+.login-tabs{display:flex;gap:10px;justify-content:center;margin-bottom:32px}
+.login-tab{padding:8px 24px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--muted);cursor:pointer;font-size:13px;font-weight:500;transition:all .2s}
+.login-tab.active{background:var(--cyan);color:#000;border-color:var(--cyan)}
+.hospital-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-bottom:28px}
+.hosp-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.hosp-card:hover{border-color:var(--cyan);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.hosp-card.selected{border-color:var(--cyan);background:var(--surface2);box-shadow:0 0 0 2px rgba(56,189,248,.3)}
+.hosp-card-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px}
+.hosp-card-name{font-size:14px;font-weight:600;margin-bottom:4px}
+.hosp-card-meta{font-size:11px;color:var(--muted)}
+.hosp-card-badge{position:absolute;top:12px;right:12px;font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.badge-public{background:#052e16;color:var(--green);border:1px solid #166534}
+.badge-private{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan)}
+.badge-nonprofit{background:#3b0764;color:var(--purple);border:1px solid #6b21a8}
+.badge-federal{background:#422006;color:var(--yellow);border:1px solid #713f12}
+.badge-state{background:#450a0a;color:var(--red);border:1px solid #7f1d1d}
+.pin-panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;max-width:360px;margin:0 auto;display:none}
+.pin-panel.show{display:block}
+.pin-selected-name{font-size:16px;font-weight:600;margin-bottom:4px;color:var(--cyan)}
+.pin-label{font-size:12px;color:var(--muted);margin-bottom:16px}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin-bottom:20px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:all .15s}
+.pin-dot.filled{background:var(--cyan);border-color:var(--cyan)}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.pin-key{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:18px;font-weight:500;border-radius:10px;padding:14px;cursor:pointer;transition:all .15s;font-family:var(--mono)}
+.pin-key:hover{background:var(--cyan-dim);border-color:var(--cyan);color:var(--cyan)}
+.pin-key.del{font-size:14px;color:var(--muted)}
+.pin-hint{font-size:11px;color:var(--muted);text-align:center}
+.pin-error{color:var(--red);font-size:12px;text-align:center;height:18px;margin-top:6px}
+.admin-login{background:var(--surface);border:1px solid #7f1d1d;border-radius:14px;padding:28px;max-width:360px;margin:0 auto}
+.admin-icon{font-size:32px;text-align:center;margin-bottom:12px}
+.admin-login-title{font-size:15px;font-weight:600;text-align:center;margin-bottom:4px}
+.admin-login-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:20px}
+.form-input{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--text);outline:none;font-family:var(--sans);width:100%;transition:border-color .2s;margin-bottom:12px}
+.form-input:focus{border-color:var(--cyan)}
+
+/* ── SHARED HEADER ── */
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.header-left{display:flex;align-items:center;gap:12px}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:28px;height:28px;background:var(--cyan);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.logo-text{font-weight:600;font-size:15px;letter-spacing:-0.3px}
+.logo-text span{color:var(--cyan)}
+.divider-v{width:1px;height:20px;background:var(--border)}
+.user-pill{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 6px;font-size:12px}
+.user-pill-avatar{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
+.avatar-admin{background:var(--red);color:#fff}
+.avatar-hospital{background:var(--cyan);color:#000}
+.header-right{display:flex;align-items:center;gap:10px}
+.status-dot{width:7px;height:7px;background:var(--green);border-radius:50%;display:inline-block;margin-right:4px;box-shadow:0 0 6px var(--green)}
+.btn{border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);display:inline-flex;align-items:center;gap:6px;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-cyan{background:var(--cyan);color:#000}
+.btn-green{background:var(--green);color:#000}
+.btn-red{background:#7f1d1d;color:var(--red);border:1px solid var(--red)}
+.btn-yellow{background:#422006;color:var(--yellow);border:1px solid var(--yellow)}
+.btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text);border-color:var(--muted)}
+.btn-sm{padding:4px 10px;font-size:11px}
+
+/* ── LAYOUT ── */
+.app-body{display:flex;flex:1;overflow:hidden;height:calc(100vh - 52px)}
+aside{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);overflow-y:auto;padding:14px 0;display:flex;flex-direction:column}
+.sidebar-label{font-size:10px;font-weight:600;letter-spacing:1px;color:var(--muted);text-transform:uppercase;padding:0 16px 6px}
+.table-item{display:flex;align-items:center;gap:8px;padding:7px 16px;cursor:pointer;font-size:13px;border-left:2px solid transparent;transition:all .15s;user-select:none}
+.table-item:hover{background:var(--surface2);color:var(--cyan)}
+.table-item.active{background:var(--surface2);border-left-color:var(--cyan);color:var(--cyan)}
+.table-icon{font-size:12px;opacity:.6}
+.row-count{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--bg);padding:1px 6px;border-radius:10px}
+.sidebar-spacer{flex:1}
+.sidebar-info{padding:12px 16px;border-top:1px solid var(--border);margin-top:8px}
+.sidebar-info-label{font-size:10px;color:var(--muted);margin-bottom:4px}
+.sidebar-info-val{font-size:12px;color:var(--cyan);font-family:var(--mono)}
+main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.filter-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;flex-shrink:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chip{background:#052e16;border:1px solid #166534;color:var(--green);font-size:12px;font-weight:500;padding:6px 14px;border-radius:20px;cursor:pointer;transition:all .2s;white-space:nowrap;user-select:none}
+.chip:hover{background:#0a3d20;transform:translateY(-1px)}
+.chip.chip-active{background:var(--green);color:#000}
+.results-area{flex:1;overflow:auto;padding:20px}
+.result-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+.search-box{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--text);outline:none;font-family:var(--sans);width:220px}
+.search-box:focus{border-color:var(--cyan)}
+.search-box::placeholder{color:var(--muted)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--surface2);position:sticky;top:0;z-index:1}
+th{padding:10px 14px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.5px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;font-family:var(--mono)}
+td{padding:8px 14px;border-bottom:1px solid #1a2233;font-family:var(--mono);font-size:12px;white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.null-val{color:var(--muted);font-style:italic}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+.badge-active{background:#052e16;color:var(--green);border:1px solid #166534}
+.badge-closed{background:#450a0a;color:var(--red);border:1px solid #7f1d1d}
+.badge-pending{background:#422006;color:var(--yellow);border:1px solid #713f12}
+.badge-critical{background:#3b0764;color:var(--purple);border:1px solid #6b21a8}
+.col-id{color:var(--cyan)}.col-num{color:var(--yellow)}.col-date{color:var(--purple)}
+.row-actions{display:flex;gap:5px}
+.icon-btn{border:none;border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:var(--sans);font-weight:600;transition:opacity .15s}
+.icon-btn:hover{opacity:.8}
+.edit-btn{background:#0e4966;color:var(--cyan);border:1px solid var(--cyan-dim)}
+.del-btn{background:#450a0a;color:var(--red);border:1px solid #7f1d1d}
+.hosp-banner{background:var(--surface2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.hosp-banner-icon{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.hosp-banner-name{font-size:15px;font-weight:600}
+.hosp-banner-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.hosp-banner-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.modal-overlay.hidden{display:none}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:560px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.mode-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:700}
+.mode-add{background:#052e16;color:var(--green);border:1px solid #166534}
+.mode-edit{background:var(--cyan-dim);color:var(--cyan);border:1px solid var(--cyan)}
+.close-btn{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px;line-height:1}
+.close-btn:hover{color:var(--text)}
+.modal-body{padding:20px 24px;overflow-y:auto;flex:1}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;font-family:var(--mono)}
+.form-input-modal,.form-select{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--text);outline:none;font-family:var(--sans);transition:border-color .2s;width:100%}
+.form-input-modal:focus,.form-select:focus{border-color:var(--cyan)}
+.form-select option{background:var(--surface2)}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end}
+.confirm-modal{background:var(--surface);border:1px solid #7f1d1d;border-radius:14px;width:420px;max-width:95vw;padding:28px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+.confirm-icon{font-size:40px;margin-bottom:12px}
+.confirm-title{font-size:16px;font-weight:600;margin-bottom:8px;color:var(--red)}
+.confirm-msg{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6}
+.confirm-btns{display:flex;gap:10px;justify-content:center}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;display:flex;align-items:center;gap:10px;z-index:200;transform:translateY(80px);opacity:0;transition:all .3s;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.toast.show{transform:translateY(0);opacity:1}
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:14px;gap:10px}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;padding:20px 0}
+.overview-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:all .2s}
+.overview-card:hover{border-color:var(--cyan);transform:translateY(-2px)}
+.ov-icon{font-size:24px;margin-bottom:10px}
+.ov-name{font-size:14px;font-weight:600;margin-bottom:6px}
+.ov-meta{font-size:11px;color:var(--muted);line-height:1.6}
+.ov-stats{display:flex;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.ov-stat{text-align:center}
+.ov-stat-val{font-size:16px;font-weight:600;font-family:var(--mono);color:var(--cyan)}
+.ov-stat-lbl{font-size:10px;color:var(--muted)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen" class="screen active">
+  <div class="login-wrapper">
+    <div class="login-header">
+      <div class="login-logo">🏥</div>
+      <div class="login-title">Hospital<span>DB</span></div>
+      <div class="login-sub">Multi-user hospital management platform</div>
+    </div>
+    <div class="login-tabs">
+      <div class="login-tab active" onclick="switchLoginTab('hospital',this)">🏥 Hospital Login</div>
+      <div class="login-tab" onclick="switchLoginTab('admin',this)">🔐 Admin Login</div>
+    </div>
+    <div id="hospitalPicker">
+      <div class="hospital-grid" id="hospitalGrid"></div>
+      <div class="pin-panel" id="pinPanel">
+        <div class="pin-selected-name" id="pinHospName"></div>
+        <div class="pin-label">Enter your 4-digit PIN to continue</div>
+        <div class="pin-dots" id="pinDots">
+          <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+          <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+        </div>
+        <div class="pin-keypad">
+          <button class="pin-key" onclick="pinPress('1')">1</button>
+          <button class="pin-key" onclick="pinPress('2')">2</button>
+          <button class="pin-key" onclick="pinPress('3')">3</button>
+          <button class="pin-key" onclick="pinPress('4')">4</button>
+          <button class="pin-key" onclick="pinPress('5')">5</button>
+          <button class="pin-key" onclick="pinPress('6')">6</button>
+          <button class="pin-key" onclick="pinPress('7')">7</button>
+          <button class="pin-key" onclick="pinPress('8')">8</button>
+          <button class="pin-key" onclick="pinPress('9')">9</button>
+          <button class="pin-key del" onclick="pinClear()">Clear</button>
+          <button class="pin-key" onclick="pinPress('0')">0</button>
+          <button class="pin-key del" onclick="pinBack()">⌫</button>
+        </div>
+        <div class="pin-hint">Enter your hospital PIN</div>
+        <div class="pin-error" id="pinError"></div>
+      </div>
+    </div>
+    <div id="adminPicker" style="display:none">
+      <div class="admin-login fade-in">
+        <div class="admin-icon">🔐</div>
+        <div class="admin-login-title">Administrator Access</div>
+        <div class="admin-login-sub">Full system access — all hospitals & records</div>
+        <input class="form-input" type="email" id="adminUser" placeholder="Email" value="admin@hospitaldb.com">
+        <input class="form-input" type="password" id="adminPass" placeholder="Password">
+        <button class="btn btn-red" style="width:100%;justify-content:center" onclick="adminLogin()">🔐 Sign In as Admin</button>
+        <div class="pin-error" id="adminError"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN SCREEN -->
+<div id="adminScreen" class="screen">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo"><div class="logo-icon">🏥</div><span class="logo-text">Hospital<span>DB</span></span></div>
+      <div class="divider-v"></div>
+      <div class="user-pill"><div class="user-pill-avatar avatar-admin">A</div><span>Administrator</span></div>
+    </div>
+    <div class="header-right">
+      <span style="font-size:12px;color:var(--muted)"><span class="status-dot"></span>Supabase · Live</span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">← Logout</button>
+    </div>
+  </header>
+  <div class="app-body">
+    <aside>
+      <div style="padding:0 0 8px">
+        <div class="sidebar-label">Admin Views</div>
+        <div class="table-item active" id="adm-overview-item" onclick="adminView('overview',this)">
+          <span class="table-icon">◉</span> Overview
+        </div>
+      </div>
+      <div>
+        <div class="sidebar-label" style="margin-top:8px">All Tables</div>
+        <div class="table-item" onclick="adminView('hospitals',this)"><span class="table-icon">▤</span> hospitals <span class="row-count" id="adm-rc-hospitals"></span></div>
+        <div class="table-item" onclick="adminView('patients',this)"><span class="table-icon">▤</span> patients <span class="row-count" id="adm-rc-patients"></span></div>
+        <div class="table-item" onclick="adminView('doctors',this)"><span class="table-icon">▤</span> doctors <span class="row-count" id="adm-rc-doctors"></span></div>
+        <div class="table-item" onclick="adminView('appointments',this)"><span class="table-icon">▤</span> appointments <span class="row-count" id="adm-rc-appointments"></span></div>
+        <div class="table-item" onclick="adminView('departments',this)"><span class="table-icon">▤</span> departments <span class="row-count" id="adm-rc-departments"></span></div>
+        <div class="table-item" onclick="adminView('admissions',this)"><span class="table-icon">▤</span> admissions <span class="row-count" id="adm-rc-admissions"></span></div>
+      </div>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-info"><div class="sidebar-info-label">Platform</div><div class="sidebar-info-val">Supabase · PostgreSQL</div></div>
+    </aside>
+    <main>
+      <div class="filter-bar" id="adminFilterBar">
+        <span class="chip chip-active" onclick="runChip(this,'hospitals',null,'admin')">🏥 All Hospitals</span>
+        <span class="chip" onclick="runChip(this,'patients',{column:'status',value:'Active'},'admin')">🟢 Active Patients</span>
+        <span class="chip" onclick="runChip(this,'doctors',null,'admin')">👨‍⚕️ All Doctors</span>
+        <span class="chip" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'admin')">📅 Scheduled</span>
+        <span class="chip" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'admin')">🚨 Critical</span>
+        <span class="chip" onclick="runChip(this,'departments',null,'admin')">🏢 Departments</span>
+      </div>
+      <div class="results-area" id="adminResults"></div>
+    </main>
+  </div>
+</div>
+
+<!-- HOSPITAL SCREEN -->
+<div id="hospitalScreen" class="screen">
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo"><div class="logo-icon">🏥</div><span class="logo-text">Hospital<span>DB</span></span></div>
+      <div class="divider-v"></div>
+      <div class="user-pill"><div class="user-pill-avatar avatar-hospital" id="hospPillAvatar">H</div><span id="hospPillName">Hospital</span></div>
+    </div>
+    <div class="header-right">
+      <span style="font-size:12px;color:var(--muted)"><span class="status-dot"></span>Supabase · Live</span>
+      <button class="btn btn-ghost btn-sm" onclick="logout()">← Logout</button>
+    </div>
+  </header>
+  <div class="hosp-banner" id="hospBanner"></div>
+  <div class="app-body">
+    <aside>
+      <div>
+        <div class="sidebar-label">My Data</div>
+        <div class="table-item active" id="hosp-patients-item" onclick="hospView('patients',this)"><span class="table-icon">▤</span> my patients <span class="row-count" id="hosp-rc-patients"></span></div>
+        <div class="table-item" onclick="hospView('doctors',this)"><span class="table-icon">▤</span> my doctors <span class="row-count" id="hosp-rc-doctors"></span></div>
+        <div class="table-item" onclick="hospView('appointments',this)"><span class="table-icon">▤</span> appointments <span class="row-count" id="hosp-rc-appointments"></span></div>
+        <div class="table-item" onclick="hospView('departments',this)"><span class="table-icon">▤</span> departments <span class="row-count" id="hosp-rc-departments"></span></div>
+        <div class="table-item" onclick="hospView('admissions',this)"><span class="table-icon">▤</span> admissions <span class="row-count" id="hosp-rc-admissions"></span></div>
+      </div>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-info"><div class="sidebar-info-label">Logged in as</div><div class="sidebar-info-val" id="hospSidebarName">—</div></div>
+    </aside>
+    <main>
+      <div class="filter-bar" id="hospFilterBar">
+        <span class="chip chip-active" onclick="runChip(this,'patients',{column:'status',value:'Active'},'hosp')">🟢 Active Patients</span>
+        <span class="chip" onclick="runChip(this,'patients',null,'hosp')">👥 All Patients</span>
+        <span class="chip" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'hosp')">📅 Scheduled</span>
+        <span class="chip" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'hosp')">🚨 Critical</span>
+        <span class="chip" onclick="runChip(this,'doctors',null,'hosp')">👨‍⚕️ Doctors</span>
+      </div>
+      <div class="results-area" id="hospResults"></div>
+    </main>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title"><span id="modalTableName">—</span><span class="mode-badge" id="modeBadge">ADD</span></div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body"><div class="form-grid" id="formGrid"></div></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green" onclick="saveRecord()">💾 Save Record</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="confirmOverlay">
+  <div class="confirm-modal">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">Delete Record?</div>
+    <div class="confirm-msg" id="confirmMsg">This cannot be undone.</div>
+    <div class="confirm-btns">
+      <button class="btn btn-yellow" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-red" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg">Done.</span></div>
+
+<script>
+// ════════════════════════════════════════════════
+// SUPABASE INIT
+// ════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://yrndxywkngoedcbqrdyo.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_NbJzRL0kkfUYROdfLdBnPQ_m4cMQIj_';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ════════════════════════════════════════════════
+// HOSPITALS META (for login cards — no DB call needed)
+// ════════════════════════════════════════════════
+const HOSPITALS_META = [
+  {id:1, name:'Metro General Hospital',        city:'New York',      state:'NY', type:'Public',     beds:850,  icon:'🏛️', color:'#38bdf8'},
+  {id:2, name:"St. Mary's Medical Center",     city:'Los Angeles',   state:'CA', type:'Private',    beds:620,  icon:'⛪', color:'#4ade80'},
+  {id:3, name:"Lakeside Children's Hospital",  city:'Chicago',       state:'IL', type:'Non-profit', beds:310,  icon:'🏥', color:'#c084fc'},
+  {id:4, name:'Sunrise Health System',         city:'Houston',       state:'TX', type:'Private',    beds:940,  icon:'🌅', color:'#fb923c'},
+  {id:5, name:'Pacific Coast Medical',         city:'San Francisco', state:'CA', type:'Private',    beds:480,  icon:'🌊', color:'#fbbf24'},
+  {id:6, name:'Riverside Community Hospital',  city:'Phoenix',       state:'AZ', type:'Public',     beds:290,  icon:'🏞️', color:'#34d399'},
+  {id:7, name:'Northbrook Trauma Center',      city:'Philadelphia',  state:'PA', type:'Public',     beds:560,  icon:'🚑', color:'#f87171'},
+  {id:8, name:'Maplewood Veterans Hospital',   city:'San Antonio',   state:'TX', type:'Federal',    beds:400,  icon:'🎖️', color:'#60a5fa'},
+  {id:9, name:'Coastal Rehabilitation Inst.',  city:'Miami',         state:'FL', type:'Non-profit', beds:180,  icon:'🌴', color:'#a78bfa'},
+  {id:10,name:'Highland Psychiatric Center',   city:'Seattle',       state:'WA', type:'State',      beds:220,  icon:'🧠', color:'#f472b6'},
+  {id:11,name:"St. Luke's Heart Institute",    city:'Boston',        state:'MA', type:'Private',    beds:370,  icon:'❤️', color:'#fb7185'},
+];
+
+// ════════════════════════════════════════════════
+// TABLE SCHEMAS (for forms only — no types stored in DB)
+// ════════════════════════════════════════════════
+const SCHEMAS = {
+  hospitals:    { cols:['name','city','state','type','bed_capacity','established','status'],
+                  types:['text','text','text',['Public','Private','Non-profit','Federal','State'],'number','date',['Active','Closed']] },
+  patients:     { cols:['first_name','last_name','dob','gender','blood_type','hospital_id','doctor_id','status'],
+                  types:['text','text','date',['M','F'],['O+','O-','A+','A-','B+','B-','AB+','AB-','Unknown'],'number','doctor_select',['Active','Discharged','Critical']] },
+  doctors:      { cols:['name','specialty','hospital_id','years_exp','license_no','available'],
+                  types:['text',['Cardiology','Neurology','Orthopedics','Oncology','Pediatrics','Emergency','Surgery','Internal Medicine','Radiology','Psychiatry','Rehabilitation','Geriatrics'],'number','number','text',['Yes','No']] },
+  departments:  { cols:['name','hospital_id','head_doctor_id','floor','extension'],
+                  types:['text','number','number','number','text'] },
+  appointments: { cols:['patient_id','doctor_id','date','time','type','notes','status'],
+                  types:['number','doctor_select','date','text',['Follow-up','Consultation','Treatment','Check-up','Emergency','Surgery','Imaging','Therapy'],'text',['Scheduled','Completed','Cancelled']] },
+  admissions:   { cols:['patient_id','hospital_id','admit_date','discharge_date','room','severity','diagnosis'],
+                  types:['number','number','date','date','text',['Low','Moderate','Critical'],'text'] },
+};
+
+// ════════════════════════════════════════════════
+// SESSION STATE
+// ════════════════════════════════════════════════
+let session = { role:null, hospitalId:null, hospMeta:null };
+let currentTable = 'hospitals';
+let currentContext = 'admin';
+let editingRow = null;
+let modalMeta = {};
+let deleteMeta = {};
+let cachedDoctors = [];
+let cachedHospitals = [];
+let selectedHospId = null;
+let pinBuffer = '';
+
+// ════════════════════════════════════════════════
+// LOGIN
+// ════════════════════════════════════════════════
+function switchLoginTab(tab, el) {
+  document.querySelectorAll('.login-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('hospitalPicker').style.display = tab==='hospital' ? '' : 'none';
+  document.getElementById('adminPicker').style.display   = tab==='admin'    ? '' : 'none';
+}
+
+function buildHospitalCards() {
+  const typeClass = {Public:'badge-public',Private:'badge-private','Non-profit':'badge-nonprofit',Federal:'badge-federal',State:'badge-state'};
+  document.getElementById('hospitalGrid').innerHTML = HOSPITALS_META.map(h => `
+    <div class="hosp-card fade-in" id="hcard-${h.id}" onclick="selectHospital(${h.id})">
+      <div class="hosp-card-icon" style="background:${h.color}22;color:${h.color}">${h.icon}</div>
+      <div class="hosp-card-name">${h.name}</div>
+      <div class="hosp-card-meta">${h.city}, ${h.state} · ${h.beds} beds</div>
+      <div class="hosp-card-badge ${typeClass[h.type]||'badge-public'}">${h.type}</div>
+    </div>`).join('');
+}
+
+function selectHospital(id) {
+  selectedHospId = id;
+  document.querySelectorAll('.hosp-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('hcard-'+id).classList.add('selected');
+  const h = HOSPITALS_META.find(x => x.id===id);
+  document.getElementById('pinHospName').textContent = h.name;
+  document.getElementById('pinPanel').classList.add('show');
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('pinError').textContent = '';
+}
+
+function updatePinDots() {
+  for(let i=0;i<4;i++) document.getElementById('d'+i).classList.toggle('filled', i<pinBuffer.length);
+}
+function pinPress(d) {
+  if(pinBuffer.length>=4) return;
+  pinBuffer+=d; updatePinDots();
+  if(pinBuffer.length===4) setTimeout(verifyHospitalPin, 150);
+}
+function pinBack()  { pinBuffer=pinBuffer.slice(0,-1); updatePinDots(); }
+function pinClear() { pinBuffer=''; updatePinDots(); document.getElementById('pinError').textContent=''; }
+
+async function verifyHospitalPin() {
+  // PIN maps to hospital email: hospital{id}@hospitaldb.com, password Hospital{id}@1234!
+  const h = HOSPITALS_META.find(x => x.id===selectedHospId);
+  // PIN is the last 4 digits of "Hospital{id}@1234!" → always "1234" in our setup
+  // For real security you'd store hashed PINs in DB
+  // Here PIN = "1234" for all hospitals (matches what we set up)
+  if(pinBuffer !== '1234') {
+    document.getElementById('pinError').textContent = '✕ Incorrect PIN. Try again.';
+    pinBuffer=''; updatePinDots(); return;
+  }
+  document.getElementById('pinError').textContent = '';
+  const email = `hospital${selectedHospId}@hospitaldb.com`;
+  const password = `Hospital${selectedHospId}@1234!`;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error) {
+    document.getElementById('pinError').textContent = '✕ Login failed: '+error.message;
+    pinBuffer=''; updatePinDots(); return;
+  }
+  const meta = data.user.user_metadata;
+  session = { role:'hospital', hospitalId: meta.hospital_id, hospMeta: HOSPITALS_META.find(x=>x.id===meta.hospital_id) };
+  showScreen('hospitalScreen');
+  initHospital();
+}
+
+async function adminLogin() {
+  const email = document.getElementById('adminUser').value;
+  const pass  = document.getElementById('adminPass').value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if(error) { document.getElementById('adminError').textContent='✕ '+error.message; return; }
+  const role = data.user.user_metadata?.role;
+  if(role !== 'admin') { document.getElementById('adminError').textContent='✕ Not an admin account.'; await sb.auth.signOut(); return; }
+  session = { role:'admin', hospitalId:null };
+  showScreen('adminScreen');
+  initAdmin();
+}
+
+async function logout() {
+  await sb.auth.signOut();
+  session={role:null,hospitalId:null};
+  pinBuffer=''; selectedHospId=null;
+  document.querySelectorAll('.hosp-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('pinPanel').classList.remove('show');
+  showScreen('loginScreen');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════════════
+// ADMIN INIT
+// ════════════════════════════════════════════════
+async function initAdmin() {
+  currentContext='admin';
+  await loadCaches();
+  updateAdminRowCounts();
+  adminView('overview', document.getElementById('adm-overview-item'));
+}
+
+async function loadCaches() {
+  const { data: docs } = await sb.from('doctors').select('id,name,specialty,hospital_id');
+  cachedDoctors = docs || [];
+  const { data: hosps } = await sb.from('hospitals').select('id,name');
+  cachedHospitals = hosps || [];
+}
+
+async function updateAdminRowCounts() {
+  const tables = ['hospitals','patients','doctors','appointments','departments','admissions'];
+  for(const t of tables) {
+    const { count } = await sb.from(t).select('*',{count:'exact',head:true});
+    const el = document.getElementById('adm-rc-'+t);
+    if(el) el.textContent = count ?? '';
+  }
+}
+
+function adminView(view, el) {
+  document.querySelectorAll('#adminScreen aside .table-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  currentContext='admin';
+  if(view==='overview') {
+    document.getElementById('adminFilterBar').style.display='none';
+    renderAdminOverview();
+  } else {
+    document.getElementById('adminFilterBar').style.display='';
+    currentTable=view;
+    renderTable('adminResults', view, null, null);
+  }
+}
+
+async function renderAdminOverview() {
+  document.getElementById('adminResults').innerHTML = `<div class="loading"><div class="spinner"></div> Loading overview…</div>`;
+  const [hosps, patients, doctors, admissions] = await Promise.all([
+    sb.from('hospitals').select('*'),
+    sb.from('patients').select('id,hospital_id'),
+    sb.from('doctors').select('id,hospital_id'),
+    sb.from('admissions').select('id,hospital_id'),
+  ]);
+  const H = hosps.data||[], P=patients.data||[], D=doctors.data||[], A=admissions.data||[];
+  document.getElementById('adminResults').innerHTML = `
+    <div style="padding:0 0 16px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:4px">System Overview</div>
+      <div style="font-size:13px;color:var(--muted)">Full visibility across all ${H.length} hospitals · Supabase Live</div>
+    </div>
+    <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Hospitals</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--cyan)">${H.length}</div></div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Patients</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--green)">${P.length}</div></div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Doctors</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--yellow)">${D.length}</div></div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;flex:1;min-width:110px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Admissions</div><div style="font-size:22px;font-weight:600;font-family:var(--mono);color:var(--purple)">${A.length}</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Hospitals — click to view patients</div>
+    <div class="overview-grid">
+      ${HOSPITALS_META.map(h => {
+        const pts = P.filter(r=>r.hospital_id===h.id).length;
+        const drs = D.filter(r=>r.hospital_id===h.id).length;
+        const adm = A.filter(r=>r.hospital_id===h.id).length;
+        return `<div class="overview-card fade-in" onclick="adminDrillHospital(${h.id})">
+          <div class="ov-icon">${h.icon}</div>
+          <div class="ov-name">${h.name}</div>
+          <div class="ov-meta">${h.city}, ${h.state} · ${h.beds} beds · ${h.type}</div>
+          <div class="ov-stats">
+            <div class="ov-stat"><div class="ov-stat-val">${pts}</div><div class="ov-stat-lbl">Patients</div></div>
+            <div class="ov-stat"><div class="ov-stat-val">${drs}</div><div class="ov-stat-lbl">Doctors</div></div>
+            <div class="ov-stat"><div class="ov-stat-val">${adm}</div><div class="ov-stat-lbl">Admissions</div></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function adminDrillHospital(id) {
+  document.getElementById('adminFilterBar').style.display='';
+  currentTable='patients';
+  renderTable('adminResults','patients',{column:'hospital_id',value:id},null);
+  showToast('🏥', HOSPITALS_META.find(x=>x.id===id).name);
+}
+
+// ════════════════════════════════════════════════
+// HOSPITAL INIT
+// ════════════════════════════════════════════════
+async function initHospital() {
+  currentContext='hosp';
+  const h = session.hospMeta;
+  await loadCaches();
+  document.getElementById('hospPillAvatar').textContent = h.name[0];
+  document.getElementById('hospPillName').textContent = h.name.split(' ').slice(0,2).join(' ');
+  document.getElementById('hospSidebarName').textContent = h.name;
+  // Counts
+  const [pts,drs,depts,adm] = await Promise.all([
+    sb.from('patients').select('*',{count:'exact',head:true}).eq('hospital_id',h.id),
+    sb.from('doctors').select('*',{count:'exact',head:true}).eq('hospital_id',h.id),
+    sb.from('departments').select('*',{count:'exact',head:true}).eq('hospital_id',h.id),
+    sb.from('admissions').select('*',{count:'exact',head:true}).eq('hospital_id',h.id),
+  ]);
+  const myDocIds = cachedDoctors.filter(d=>d.hospital_id===h.id).map(d=>d.id);
+  const apptCount = myDocIds.length>0 ? (await sb.from('appointments').select('*',{count:'exact',head:true}).in('doctor_id',myDocIds)).count : 0;
+  document.getElementById('hosp-rc-patients').textContent     = pts.count??'';
+  document.getElementById('hosp-rc-doctors').textContent      = drs.count??'';
+  document.getElementById('hosp-rc-departments').textContent  = depts.count??'';
+  document.getElementById('hosp-rc-admissions').textContent   = adm.count??'';
+  document.getElementById('hosp-rc-appointments').textContent = apptCount??'';
+  document.getElementById('hospBanner').innerHTML = `
+    <div class="hosp-banner-icon" style="background:${h.color}22;color:${h.color}">${h.icon}</div>
+    <div><div class="hosp-banner-name">${h.name}</div><div class="hosp-banner-meta">${h.city}, ${h.state} · ${h.beds} beds · ${h.type}</div></div>
+    <div class="hosp-banner-right">
+      <div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Patients</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--cyan)">${pts.count??0}</div></div>
+      <div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Doctors</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green)">${drs.count??0}</div></div>
+    </div>`;
+  runChip(document.querySelector('#hospFilterBar .chip'), 'patients', {column:'status',value:'Active'}, 'hosp');
+}
+
+function hospView(view, el) {
+  document.querySelectorAll('#hospitalScreen aside .table-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  currentContext='hosp'; currentTable=view;
+  renderTable('hospResults', view, null, session.hospitalId);
+}
+
+// ════════════════════════════════════════════════
+// CHIP
+// ════════════════════════════════════════════════
+function runChip(el, table, filter, ctx) {
+  const barId = ctx==='admin' ? 'adminFilterBar' : 'hospFilterBar';
+  document.querySelectorAll('#'+barId+' .chip').forEach(c=>c.classList.remove('chip-active'));
+  if(el) el.classList.add('chip-active');
+  currentContext=ctx; currentTable=table;
+  const hid = ctx==='hosp' ? session.hospitalId : null;
+  renderTable(ctx==='admin'?'adminResults':'hospResults', table, filter, hid);
+}
+
+// ════════════════════════════════════════════════
+// RENDER TABLE — reads from Supabase
+// ════════════════════════════════════════════════
+async function renderTable(targetId, tableName, filter, hospId) {
+  document.getElementById(targetId).innerHTML = `<div class="loading"><div class="spinner"></div> Loading ${tableName}…</div>`;
+  const adminReadOnly = targetId==='adminResults' && ['patients','doctors','appointments','admissions'].includes(tableName);
+  const isHosp = targetId==='hospResults';
+
+  let query = sb.from(tableName).select('*');
+
+  // Hospital scoping
+  if(hospId) {
+    if(['patients','hospitals'].includes(tableName))    query = query.eq('hospital_id', hospId);
+    else if(tableName==='doctors')                       query = query.eq('hospital_id', hospId);
+    else if(tableName==='departments')                   query = query.eq('hospital_id', hospId);
+    else if(tableName==='admissions')                    query = query.eq('hospital_id', hospId);
+    else if(tableName==='appointments') {
+      const myDocIds = cachedDoctors.filter(d=>d.hospital_id===hospId).map(d=>d.id);
+      if(myDocIds.length>0) query = query.in('doctor_id', myDocIds);
+      else { document.getElementById(targetId).innerHTML=`<div class="loading">No doctors found for this hospital.</div>`; return; }
+    }
+  }
+
+  // Column filter (status, severity, etc.)
+  if(filter) query = query.eq(filter.column, filter.value);
+
+  const { data, error } = await query.order('id', {ascending:true});
+  if(error) { document.getElementById(targetId).innerHTML=`<div class="loading" style="color:var(--red)">Error: ${error.message}</div>`; return; }
+  const rows = data||[];
+  const cols = rows.length>0 ? Object.keys(rows[0]) : [];
+
+  document.getElementById(targetId).innerHTML = `
+    <div class="result-toolbar">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        ${adminReadOnly ? '' : `<button class="btn btn-green" onclick="openAddModal('${tableName}','${targetId}',${hospId||'null'})">＋ Add Record</button>`}
+        <input class="search-box" placeholder="🔍 Search…" oninput="clientSearch(this.value,'${targetId}')">
+      </div>
+      <span style="font-size:12px;color:var(--muted)"><strong style="color:var(--green)">${rows.length}</strong> record${rows.length!==1?'s':''}</span>
+    </div>
+    <div class="table-wrap">
+      <table id="tbl-${targetId}">
+        <thead><tr>
+          ${cols.map(c=>{
+            const label=c==='hospital_id'?'Hospital':c==='doctor_id'?'Doctor':c;
+            return `<th>${label}</th>`;
+          }).join('')}
+          ${adminReadOnly?'':'<th style="width:100px">Actions</th>'}
+        </tr></thead>
+        <tbody>
+          ${rows.map(row=>`<tr>
+            ${cols.map(c=>`<td>${fmtCell(c,row[c])}</td>`).join('')}
+            ${adminReadOnly?'':`<td><div class="row-actions">
+              <button class="icon-btn edit-btn" onclick='openEditModal("${tableName}","${targetId}",${JSON.stringify(row).replace(/'/g,"&#39;")},${hospId||"null"})'>✏️</button>
+              <button class="icon-btn del-btn"  onclick='openDelConfirm("${tableName}","${targetId}",${row.id},${hospId||"null"})'>🗑️</button>
+            </div></td>`}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function clientSearch(val, targetId) {
+  const s = val.toLowerCase();
+  document.querySelectorAll(`#tbl-${targetId} tbody tr`).forEach(tr => {
+    tr.style.display = tr.textContent.toLowerCase().includes(s) ? '' : 'none';
+  });
+}
+
+// ════════════════════════════════════════════════
+// FORMAT
+// ════════════════════════════════════════════════
+function badge(v,cls){return `<span class="badge ${cls}">${v}</span>`}
+function fmtCell(col,val){
+  if(val===null||val===undefined||val==='') return `<span class="null-val">NULL</span>`;
+  const c=col.toLowerCase();
+  if(c==='hospital_id'){const h=cachedHospitals.find(x=>x.id===val);return h?`<span style="color:var(--cyan)">${h.name}</span>`:`<span class="col-id">${val}</span>`;}
+  if(c==='doctor_id'){const d=cachedDoctors.find(x=>x.id===val);return d?`<span style="color:var(--purple)">${d.name}</span>`:`<span class="col-id">${val}</span>`;}
+  if(c==='id') return `<span class="col-id">${val}</span>`;
+  if(['status','available','severity'].includes(c)){
+    const v=String(val);
+    if(['Active','Yes','Completed','Low'].includes(v)) return badge(v,'badge-active');
+    if(['Closed','Discharged','No','Cancelled'].includes(v)) return badge(v,'badge-closed');
+    if(v==='Critical') return badge(v,'badge-critical');
+    if(['Scheduled','Moderate'].includes(v)) return badge(v,'badge-pending');
+    return v;
+  }
+  if(c.includes('date')) return `<span class="col-date">${val}</span>`;
+  if(typeof val==='number') return `<span class="col-num">${val}</span>`;
+  return val;
+}
+
+// ════════════════════════════════════════════════
+// ADD / EDIT MODAL
+// ════════════════════════════════════════════════
+function openAddModal(tableName, targetId, hospId) {
+  editingRow=null; modalMeta={tableName,targetId,hospId};
+  document.getElementById('modalTableName').textContent=tableName;
+  document.getElementById('modeBadge').textContent='ADD';
+  document.getElementById('modeBadge').className='mode-badge mode-add';
+  buildForm(tableName, null, hospId);
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function openEditModal(tableName, targetId, row, hospId) {
+  editingRow=row; modalMeta={tableName,targetId,hospId};
+  document.getElementById('modalTableName').textContent=tableName;
+  document.getElementById('modeBadge').textContent='EDIT';
+  document.getElementById('modeBadge').className='mode-badge mode-edit';
+  buildForm(tableName, row, hospId);
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function buildForm(table, values, hospId) {
+  const schema = SCHEMAS[table];
+  if(!schema) { document.getElementById('formGrid').innerHTML='<p style="color:var(--muted)">No form schema for this table.</p>'; return; }
+  document.getElementById('formGrid').innerHTML = schema.cols.map((col,i) => {
+    const type=schema.types[i];
+    const val=values ? (values[col]??'') : '';
+    const isFullWidth=['notes','diagnosis','name'].includes(col);
+    let input;
+    if(col==='doctor_id'||type==='doctor_select'){
+      const docs = hospId ? cachedDoctors.filter(d=>d.hospital_id===hospId) : cachedDoctors;
+      input=`<select class="form-select" id="field_${col}"><option value="">— Select Doctor —</option>${docs.map(d=>`<option value="${d.id}" ${d.id==val?'selected':''}>${d.name} · ${d.specialty}</option>`).join('')}</select>`;
+    } else if(Array.isArray(type)){
+      input=`<select class="form-select" id="field_${col}">${type.map(o=>`<option value="${o}"${o==val?' selected':''}>${o}</option>`).join('')}</select>`;
+    } else if(type==='date'){
+      input=`<input class="form-input-modal" type="date" id="field_${col}" value="${val||''}">`;
+    } else if(type==='number'){
+      const locked = col==='hospital_id' && hospId;
+      input=`<input class="form-input-modal" type="number" id="field_${col}" value="${locked?hospId:val||''}" ${locked?'readonly style="opacity:.5"':''}>`;
+    } else {
+      input=`<input class="form-input-modal" type="text" id="field_${col}" value="${val||''}">`;
+    }
+    const label = col==='doctor_id'?'Doctor':col;
+    return `<div class="form-group ${isFullWidth?'full':''}"><label class="form-label">${label}</label>${input}</div>`;
+  }).join('');
+}
+
+function closeModal(){document.getElementById('modalOverlay').classList.add('hidden');}
+
+async function saveRecord() {
+  const {tableName,targetId,hospId}=modalMeta;
+  const schema=SCHEMAS[tableName];
+  if(!schema) return;
+  const record={};
+  schema.cols.forEach((col,i)=>{
+    const el=document.getElementById('field_'+col);
+    if(!el) return;
+    const val=el.value.trim();
+    record[col]=schema.types[i]==='number'||(typeof schema.types[i]==='string'&&schema.types[i]==='number')?(val===''?null:Number(val)):(val===''?null:val);
+    if(col==='doctor_id'||col==='hospital_id'||col==='patient_id'||col==='head_doctor_id') record[col]=val===''?null:Number(val);
+  });
+  let error;
+  if(editingRow) {
+    const {error:e}=await sb.from(tableName).update(record).eq('id',editingRow.id);
+    error=e;
+    if(!e) showToast('✏️',`Record updated in ${tableName}`);
+  } else {
+    const {error:e}=await sb.from(tableName).insert(record);
+    error=e;
+    if(!e) showToast('✅',`Record added to ${tableName}`);
+  }
+  if(error){showToast('❌','Error: '+error.message);return;}
+  closeModal();
+  await loadCaches();
+  renderTable(targetId, tableName, null, hospId);
+}
+
+// ════════════════════════════════════════════════
+// DELETE
+// ════════════════════════════════════════════════
+function openDelConfirm(tableName,targetId,rowId,hospId){
+  deleteMeta={tableName,targetId,rowId,hospId};
+  document.getElementById('confirmMsg').textContent=`Delete record ID ${rowId} from "${tableName}"? This cannot be undone.`;
+  document.getElementById('confirmOverlay').classList.remove('hidden');
+}
+function closeConfirm(){document.getElementById('confirmOverlay').classList.add('hidden');deleteMeta={};}
+async function confirmDelete(){
+  const{tableName,targetId,rowId,hospId}=deleteMeta;
+  const{error}=await sb.from(tableName).delete().eq('id',rowId);
+  if(error){showToast('❌','Error: '+error.message);closeConfirm();return;}
+  closeConfirm();
+  showToast('🗑️',`Record deleted from ${tableName}`);
+  renderTable(targetId,tableName,null,hospId);
+}
+
+// ════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════
+function showToast(icon,msg){
+  document.getElementById('toastIcon').textContent=icon;
+  document.getElementById('toastMsg').textContent=msg;
+  const t=document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+
+// ════════════════════════════════════════════════
+// MODAL CLOSE ON OVERLAY CLICK
+// ════════════════════════════════════════════════
+document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+document.getElementById('confirmOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeConfirm();});
+
+// ════════════════════════════════════════════════
+// CHECK EXISTING SESSION ON LOAD
+// ════════════════════════════════════════════════
+async function checkSession() {
+  const { data:{ session: s } } = await sb.auth.getSession();
+  if(!s) { buildHospitalCards(); return; }
+  const meta = s.user.user_metadata;
+  if(meta.role==='admin') {
+    session={role:'admin',hospitalId:null};
+    showScreen('adminScreen'); initAdmin();
+  } else if(meta.role==='hospital') {
+    session={role:'hospital',hospitalId:meta.hospital_id,hospMeta:HOSPITALS_META.find(x=>x.id===meta.hospital_id)};
+    showScreen('hospitalScreen'); initHospital();
+  } else { buildHospitalCards(); }
+}
+
+checkSession();
+</script>
+</body>
+</html>
