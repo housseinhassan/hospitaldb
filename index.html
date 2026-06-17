@@ -661,6 +661,20 @@ function setLang(l) {
   lang = l;
   localStorage.setItem('hospitaldb_lang', l);
   applyTranslations();
+  // Re-render current view so table headers, badges and buttons update
+  if(session.role === 'admin') {
+    const activeItem = document.querySelector('#adminSidebar .table-item.active');
+    if(activeItem) {
+      const view = currentTable;
+      if(document.getElementById('adminFilterBar').style.display === 'none') {
+        renderAdminOverview();
+      } else {
+        renderTable('adminResults', view, null, null);
+      }
+    }
+  } else if(session.role === 'hospital') {
+    renderTable('hospResults', currentTable, null, session.hospitalId);
+  }
 }
 
 function t(key) { return T[lang][key] || T['en'][key] || key; }
