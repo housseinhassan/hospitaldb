@@ -541,6 +541,48 @@ const T = {
     colHospital:     'Hospital',
     colDoctor:       'Doctor',
     colActions:      'Actions',
+    // Table names
+    tbl_hospitals:   'hospitals',
+    tbl_patients:    'patients',
+    tbl_doctors:     'doctors',
+    tbl_appointments:'appointments',
+    tbl_departments: 'departments',
+    tbl_admissions:  'admissions',
+    // Column names
+    col_id:              'ID',
+    col_name:            'name',
+    col_first_name:      'first name',
+    col_last_name:       'last name',
+    col_dob:             'date of birth',
+    col_gender:          'gender',
+    col_blood_type:      'blood type',
+    col_hospital_id:     'hospital',
+    col_doctor_id:       'doctor',
+    col_status:          'status',
+    col_city:            'city',
+    col_state:           'state',
+    col_type:            'type',
+    col_bed_capacity:    'bed capacity',
+    col_established:     'established',
+    col_specialty:       'specialty',
+    col_years_exp:       'experience (yrs)',
+    col_license_no:      'license no.',
+    col_available:       'available',
+    col_patient_id:      'patient',
+    col_date:            'date',
+    col_time:            'time',
+    col_notes:           'notes',
+    col_head_doctor_id:  'head doctor',
+    col_floor:           'floor',
+    col_extension:       'extension',
+    col_admit_date:      'admit date',
+    col_discharge_date:  'discharge date',
+    col_room:            'room',
+    col_severity:        'severity',
+    col_diagnosis:       'diagnosis',
+    col_icon:            'icon',
+    col_color:           'color',
+    col_pin:             'PIN',
     // Status badges
     active:          'Active',
     discharged:      'Discharged',
@@ -627,6 +669,48 @@ const T = {
     colHospital:     'Hôpital',
     colDoctor:       'Médecin',
     colActions:      'Actions',
+    // Table names
+    tbl_hospitals:   'hôpitaux',
+    tbl_patients:    'patients',
+    tbl_doctors:     'médecins',
+    tbl_appointments:'rendez-vous',
+    tbl_departments: 'départements',
+    tbl_admissions:  'admissions',
+    // Column names
+    col_id:              'ID',
+    col_name:            'nom',
+    col_first_name:      'prénom',
+    col_last_name:       'nom de famille',
+    col_dob:             'date de naissance',
+    col_gender:          'sexe',
+    col_blood_type:      'groupe sanguin',
+    col_hospital_id:     'hôpital',
+    col_doctor_id:       'médecin',
+    col_status:          'statut',
+    col_city:            'ville',
+    col_state:           'état',
+    col_type:            'type',
+    col_bed_capacity:    'capacité (lits)',
+    col_established:     'fondé en',
+    col_specialty:       'spécialité',
+    col_years_exp:       'expérience (ans)',
+    col_license_no:      'n° licence',
+    col_available:       'disponible',
+    col_patient_id:      'patient',
+    col_date:            'date',
+    col_time:            'heure',
+    col_notes:           'notes',
+    col_head_doctor_id:  'médecin chef',
+    col_floor:           'étage',
+    col_extension:       'extension',
+    col_admit_date:      'date d\'admission',
+    col_discharge_date:  'date de sortie',
+    col_room:            'chambre',
+    col_severity:        'gravité',
+    col_diagnosis:       'diagnostic',
+    col_icon:            'icône',
+    col_color:           'couleur',
+    col_pin:             'NIP',
     // Status badges
     active:          'Actif',
     discharged:      'Sorti',
@@ -739,11 +823,9 @@ function applyTranslations() {
   });
 
   // Sidebar info labels
-  const sideLoggedIn = document.querySelector('#hospSidebar .sidebar-info .sidebar-info-label');
-  if(sideLoggedIn) sideLoggedIn.textContent = t('loggedInAs');
   document.querySelectorAll('.sidebar-info .sidebar-info-label').forEach(el => {
-    if(el.textContent === 'Platform' || el.textContent === 'Plateforme') el.textContent = t('platform');
-    if(el.textContent === 'Logged in as' || el.textContent === 'Connecté en tant que') el.textContent = t('loggedInAs');
+    if(['Platform','Plateforme'].includes(el.textContent)) el.textContent = t('platform');
+    if(['Logged in as','Connecté en tant que'].includes(el.textContent)) el.textContent = t('loggedInAs');
   });
 
   // Modal buttons
@@ -753,8 +835,8 @@ function applyTranslations() {
   if(cancelBtn) cancelBtn.textContent = t('cancel');
   const modeBadge = document.getElementById('modeBadge');
   if(modeBadge) {
-    if(modeBadge.textContent === 'ADD' || modeBadge.textContent === 'AJOUT') modeBadge.textContent = t('modeAdd');
-    if(modeBadge.textContent === 'EDIT' || modeBadge.textContent === 'MODIFIER') modeBadge.textContent = t('modeEdit');
+    if(['ADD','AJOUT'].includes(modeBadge.textContent)) modeBadge.textContent = t('modeAdd');
+    if(['EDIT','MODIFIER'].includes(modeBadge.textContent)) modeBadge.textContent = t('modeEdit');
   }
 
   // Confirm modal
@@ -763,6 +845,37 @@ function applyTranslations() {
   const confirmBtns = document.querySelectorAll('.confirm-btns .btn');
   if(confirmBtns[0]) confirmBtns[0].textContent = t('confirmCancel');
   if(confirmBtns[1]) confirmBtns[1].textContent = t('confirmDelete');
+
+  // Admin sidebar table names
+  const admNavMap = {
+    'adm-nav-hospitals':    'tbl_hospitals',
+    'adm-nav-patients':     'tbl_patients',
+    'adm-nav-doctors':      'tbl_doctors',
+    'adm-nav-appointments': 'tbl_appointments',
+    'adm-nav-departments':  'tbl_departments',
+    'adm-nav-admissions':   'tbl_admissions',
+  };
+  Object.entries(admNavMap).forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=t(key);
+  });
+
+  // Hospital sidebar nav names
+  const hospNavMap2 = {
+    'hosp-nav-appointments': 'tbl_appointments',
+    'hosp-nav-departments':  'tbl_departments',
+    'hosp-nav-admissions':   'tbl_admissions',
+  };
+  Object.entries(hospNavMap2).forEach(([id,key])=>{
+    const el=document.getElementById(id);
+    if(el) el.textContent=t(key);
+  });
+
+  // Modal table name label
+  const modalTbl = document.getElementById('modalTableName');
+  if(modalTbl && modalTbl.dataset.table) {
+    modalTbl.textContent = t('tbl_'+modalTbl.dataset.table) || modalTbl.dataset.table;
+  }
 }
 
 // ════════════════════════════════════════════════
@@ -1147,7 +1260,7 @@ async function renderTable(targetId, tableName, filter, hospId) {
       <table id="tbl-${targetId}">
         <thead><tr>
           ${cols.map(c=>{
-            const label=c==='hospital_id'?t('colHospital'):c==='doctor_id'?t('colDoctor'):c;
+            const label = t('col_'+c) || (c==='hospital_id'?t('colHospital'):c==='doctor_id'?t('colDoctor'):c);
             return `<th>${label}</th>`;
           }).join('')}
           ${adminReadOnly?'':`<th style="width:100px">${t('colActions')}</th>`}
@@ -1207,8 +1320,10 @@ function fmtCell(col,val){
 // ════════════════════════════════════════════════
 function openAddModal(tableName, targetId, hospId) {
   editingRow=null; modalMeta={tableName,targetId,hospId};
-  document.getElementById('modalTableName').textContent=tableName;
-  document.getElementById('modeBadge').textContent='ADD';
+  const modalTbl = document.getElementById('modalTableName');
+  modalTbl.textContent = t('tbl_'+tableName)||tableName;
+  modalTbl.dataset.table = tableName;
+  document.getElementById('modeBadge').textContent=t('modeAdd');
   document.getElementById('modeBadge').className='mode-badge mode-add';
   buildForm(tableName, null, hospId);
   document.getElementById('modalOverlay').classList.remove('hidden');
@@ -1216,8 +1331,10 @@ function openAddModal(tableName, targetId, hospId) {
 
 function openEditModal(tableName, targetId, row, hospId) {
   editingRow=row; modalMeta={tableName,targetId,hospId};
-  document.getElementById('modalTableName').textContent=tableName;
-  document.getElementById('modeBadge').textContent='EDIT';
+  const modalTbl = document.getElementById('modalTableName');
+  modalTbl.textContent = t('tbl_'+tableName)||tableName;
+  modalTbl.dataset.table = tableName;
+  document.getElementById('modeBadge').textContent=t('modeEdit');
   document.getElementById('modeBadge').className='mode-badge mode-edit';
   buildForm(tableName, row, hospId);
   document.getElementById('modalOverlay').classList.remove('hidden');
@@ -1246,7 +1363,7 @@ function buildForm(table, values, hospId) {
     } else {
       input=`<input class="form-input-modal" type="text" id="field_${col}" value="${val||''}">`;
     }
-    const label = col==='doctor_id'?'Doctor':col;
+    const label = t('col_'+col) || (col === 'doctor_id' ? t('colDoctor') : col);
     return `<div class="form-group ${isFullWidth?'full':''}"><label class="form-label">${label}</label>${input}</div>`;
   }).join('');
 }
