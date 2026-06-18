@@ -637,9 +637,13 @@ const T = {
     kpiCritical:         'Critical Cases',
     kpiScheduled:        'Scheduled Appts',
     kpiDepts:            'Departments',
+    printCharts:         'Print Charts',
     tbl_hospitals:   'hospitals',
     tbl_patients:    'patients',
     tbl_doctors:     'doctors',
+    tbl_appointments:'appointments',
+    tbl_departments: 'departments',
+    tbl_admissions:  'admissions',
     col_name:            'name',
     col_first_name:      'first name',
     col_last_name:       'last name',
@@ -784,9 +788,13 @@ const T = {
     kpiCritical:         'Cas Critiques',
     kpiScheduled:        'RDV Planifiés',
     kpiDepts:            'Départements',
+    printCharts:         'Imprimer les Graphiques',
     tbl_hospitals:   'hôpitaux',
     tbl_patients:    'patients',
     tbl_doctors:     'médecins',
+    tbl_appointments:'rendez-vous',
+    tbl_departments: 'départements',
+    tbl_admissions:  'admissions',
     col_name:            'nom',
     col_first_name:      'prénom',
     col_last_name:       'nom de famille',
@@ -1202,6 +1210,28 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
+function printCharts() {
+  window.print();
+}
+
+// Print styles
+const printStyle = document.createElement('style');
+printStyle.textContent = `
+  @media print {
+    body * { visibility: hidden; }
+    #adminResults, #adminResults * { visibility: visible; }
+    #adminResults { position: fixed; top: 0; left: 0; width: 100%; background: white; }
+    .result-toolbar, .export-wrap { display: none !important; }
+    .chart-card { border: 1px solid #ccc !important; background: white !important; break-inside: avoid; }
+    .chart-title { color: #000 !important; }
+    .kpi-card { border: 1px solid #ccc !important; background: white !important; }
+    .kpi-label { color: #666 !important; }
+    .kpi-value { color: #000 !important; }
+    .charts-grid { grid-template-columns: 1fr 1fr !important; }
+  }
+`;
+document.head.appendChild(printStyle);
+
 // ════════════════════════════════════════════════
 // EXPORT — EXCEL & PDF
 // ════════════════════════════════════════════════
@@ -1474,9 +1504,12 @@ async function renderCharts() {
   };
 
   document.getElementById('adminResults').innerHTML = `
-    <div style="padding:0 0 4px">
-      <div style="font-size:18px;font-weight:600;margin-bottom:4px" id="charts-title">${t('chartsTitle')}</div>
-      <div style="font-size:13px;color:var(--muted)" id="charts-sub">${t('chartsSub')}</div>
+    <div style="padding:0 0 4px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:18px;font-weight:600;margin-bottom:4px" id="charts-title">${t('chartsTitle')}</div>
+        <div style="font-size:13px;color:var(--muted)" id="charts-sub">${t('chartsSub')}</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="printCharts()" style="flex-shrink:0">🖨️ ${t('printCharts')}</button>
     </div>
 
     <div class="kpi-grid" style="margin-top:16px">
