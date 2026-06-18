@@ -6,6 +6,9 @@
 <title>HospitalDB — Multi-User Platform</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -320,6 +323,13 @@ tr:hover td{background:var(--surface2)}
 .alert-empty{padding:32px;text-align:center;color:var(--muted);font-size:13px}
 .alert-empty-icon{font-size:32px;margin-bottom:8px}
 #adminScreen,#hospitalScreen{position:relative}
+/* ── EXPORT ── */
+.export-wrap{position:relative;display:inline-flex}
+.export-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;min-width:160px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;display:none}
+.export-dropdown.open{display:block}
+.export-option{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13px;transition:background .15s}
+.export-option:hover{background:var(--surface2)}
+.export-option-icon{font-size:16px}
 .lang-toggle{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:20px;overflow:hidden;flex-shrink:0}
 .lang-btn{padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--muted);transition:all .2s;font-family:var(--sans)}
 .lang-btn.active{background:var(--cyan);color:#000}
@@ -602,8 +612,11 @@ const T = {
     colHospital:     'Hospital',
     colDoctor:       'Doctor',
     colActions:      'Actions',
-    // Alerts
-    alertTitle:      '🚨 Critical Alerts',
+    // Export
+    exportBtn:       '⬇ Export',
+    exportExcel:     '📊 Download Excel',
+    exportPdf:       '📄 Download PDF',
+    exportTitle:     'HospitalDB Export',
     alertEmpty:      'No critical patients',
     alertEmptyIcon:  '✅',
     alertRoom:       'Room',
@@ -746,8 +759,11 @@ const T = {
     colHospital:     'Hôpital',
     colDoctor:       'Médecin',
     colActions:      'Actions',
-    // Alerts
-    alertTitle:      '🚨 Alertes Critiques',
+    // Export
+    exportBtn:       '⬇ Exporter',
+    exportExcel:     '📊 Télécharger Excel',
+    exportPdf:       '📄 Télécharger PDF',
+    exportTitle:     'Export HospitalDB',
     alertEmpty:      'Aucun patient critique',
     alertEmptyIcon:  '✅',
     alertRoom:       'Chambre',
@@ -1184,6 +1200,85 @@ async function logout() {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════════════
+// EXPORT — EXCEL & PDF
+// ════════════════════════════════════════════════
+function toggleExportMenu(menuId) {
+  const menu = document.getElementById(menuId);
+  if(!menu) return;
+  const isOpen = menu.classList.contains('open');
+  // Close all menus first
+  document.querySelectorAll('.export-dropdown').forEach(m => m.classList.remove('open'));
+  if(!isOpen) menu.classList.add('open');
+}
+
+// Close export menus when clicking outside
+document.addEventListener('click', e => {
+  if(!e.target.closest('.export-wrap')) {
+    document.querySelectorAll('.export-dropdown').forEach(m => m.classList.remove('open'));
+  }
+});
+
+function getTableData(targetId) {
+  const table = document.getElementById('tbl-' + targetId);
+  if(!table) return { headers: [], rows: [] };
+  const headers = Array.from(table.querySelectorAll('thead th'))
+    .map(th => th.textContent.trim())
+    .filter(h => h !== t('colActions') && h !== 'Actions');
+  const rows = Array.from(table.querySelectorAll('tbody tr'))
+    .filter(tr => tr.style.display !== 'none')
+    .map(tr => Array.from(tr.querySelectorAll('td'))
+      .slice(0, headers.length)
+      .map(td => td.textContent.trim())
+    );
+  return { headers, rows };
+}
+
+function exportExcel(tableName, targetId) {
+  const { headers, rows } = getTableData(targetId);
+  if(!headers.length) { showToast('⚠️', 'No data to export'); return; }
+  const wsData = [headers, ...rows];
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Auto column widths
+  ws['!cols'] = headers.map((h, i) => ({
+    wch: Math.max(h.length, ...rows.map(r => (r[i]||'').length), 10)
+  }));
+  XLSX.utils.book_append_sheet(wb, ws, t('tbl_'+tableName) || tableName);
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `hospitaldb_${tableName}_${date}.xlsx`);
+  showToast('📊', `${t('exportExcel')} — ${rows.length} ${t('records2')}`);
+}
+
+function exportPDF(tableName, targetId) {
+  const { headers, rows } = getTableData(targetId);
+  if(!headers.length) { showToast('⚠️', 'No data to export'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: headers.length > 6 ? 'landscape' : 'portrait' });
+  // Title
+  doc.setFontSize(14);
+  doc.setTextColor(56, 189, 248);
+  doc.text('HospitalDB', 14, 16);
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${t('tbl_'+tableName)||tableName} — ${new Date().toLocaleDateString()}`, 14, 23);
+  // Table
+  doc.autoTable({
+    head: [headers],
+    body: rows,
+    startY: 28,
+    styles: { fontSize: 8, cellPadding: 3, textColor: [226,232,240], fillColor: [22,27,34] },
+    headStyles: { fillColor: [28,35,49], textColor: [56,189,248], fontStyle: 'bold', fontSize: 8 },
+    alternateRowStyles: { fillColor: [17,21,27] },
+    tableLineColor: [42,52,65],
+    tableLineWidth: 0.1,
+    margin: { left: 14, right: 14 },
+  });
+  const date = new Date().toISOString().slice(0,10);
+  doc.save(`hospitaldb_${tableName}_${date}.pdf`);
+  showToast('📄', `${t('exportPdf')} — ${rows.length} ${t('records2')}`);
 }
 
 // ════════════════════════════════════════════════
@@ -1648,7 +1743,20 @@ async function renderTable(targetId, tableName, filter, hospId) {
         ${adminReadOnly ? '' : `<button class="btn btn-green" onclick="openAddModal('${tableName}','${targetId}',${hospId||'null'})">${t('addRecord')}</button>`}
         <input class="search-box" placeholder="${t('search')}" oninput="clientSearch(this.value,'${targetId}')">
       </div>
-      <span style="font-size:12px;color:var(--muted)"><strong style="color:var(--green)">${rows.length}</strong> ${rows.length!==1?t('records2'):t('records')}</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted)"><strong style="color:var(--green)">${rows.length}</strong> ${rows.length!==1?t('records2'):t('records')}</span>
+        <div class="export-wrap">
+          <button class="btn btn-ghost btn-sm" onclick="toggleExportMenu('export-menu-${targetId}')">${t('exportBtn')}</button>
+          <div class="export-dropdown" id="export-menu-${targetId}">
+            <div class="export-option" onclick="exportExcel('${tableName}','${targetId}');toggleExportMenu('export-menu-${targetId}')">
+              <span class="export-option-icon">📊</span><span>${t('exportExcel')}</span>
+            </div>
+            <div class="export-option" onclick="exportPDF('${tableName}','${targetId}');toggleExportMenu('export-menu-${targetId}')">
+              <span class="export-option-icon">📄</span><span>${t('exportPdf')}</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="table-wrap">
       <table id="tbl-${targetId}">
