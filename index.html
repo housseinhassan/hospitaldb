@@ -677,6 +677,7 @@ const T = {
     col_icon:            'icon',
     col_color:           'color',
     col_pin:             'PIN',
+    col_contact_email:   'Contact Email',
     // Status badges
     active:          'Active',
     discharged:      'Discharged',
@@ -828,6 +829,7 @@ const T = {
     col_icon:            'icône',
     col_color:           'couleur',
     col_pin:             'NIP',
+    col_contact_email:   'Email de Contact',
     // Status badges
     active:          'Actif',
     discharged:      'Sorti',
@@ -1054,8 +1056,8 @@ async function loadAndBuildHospitalCards() {
 // TABLE SCHEMAS (for forms only — no types stored in DB)
 // ════════════════════════════════════════════════
 const SCHEMAS = {
-  hospitals:    { cols:['name','city','state','type','bed_capacity','established','status','icon','color','pin'],
-                  types:['text','text','text',['Public','Private','Non-profit','Federal','State'],'number','date',['Active','Closed'],'text','text','text'] },
+  hospitals:    { cols:['name','city','state','type','bed_capacity','established','status','icon','color','pin','contact_email'],
+                  types:['text','text','text',['Public','Private','Non-profit','Federal','State'],'number','date',['Active','Closed'],'text','text','text','text'] },
   patients:     { cols:['first_name','last_name','dob','gender','blood_type','hospital_id','doctor_id','status'],
                   types:['text','text','date',['M','F'],['O+','O-','A+','A-','B+','B-','AB+','AB-','Unknown'],'number','doctor_select',['Active','Discharged','Critical']] },
   doctors:      { cols:['name','specialty','hospital_id','years_exp','license_no','available'],
@@ -1063,9 +1065,9 @@ const SCHEMAS = {
   departments:  { cols:['name','hospital_id','head_doctor_id','floor','extension'],
                   types:['text','number','number','number','text'] },
   appointments: { cols:['patient_id','doctor_id','date','time','type','notes','status'],
-                  types:['number','doctor_select','date','text',['Follow-up','Consultation','Treatment','Check-up','Emergency','Surgery','Imaging','Therapy'],'text',['Scheduled','Completed','Cancelled']] },
+                  types:['patient_select','doctor_select','date','text',['Follow-up','Consultation','Treatment','Check-up','Emergency','Surgery','Imaging','Therapy'],'text',['Scheduled','Completed','Cancelled']] },
   admissions:   { cols:['patient_id','hospital_id','admit_date','discharge_date','room','severity','diagnosis'],
-                  types:['number','number','date','date','text',['Low','Moderate','Critical'],'text'] },
+                  types:['patient_select','number','date','date','text',['Low','Moderate','Critical'],'text'] },
 };
 
 // ════════════════════════════════════════════════
@@ -1079,6 +1081,7 @@ let modalMeta = {};
 let deleteMeta = {};
 let cachedDoctors = [];
 let cachedHospitals = [];
+let cachedPatients = [];
 let selectedHospId = null;
 let pinBuffer = '';
 
@@ -1703,6 +1706,8 @@ async function loadCaches() {
   cachedDoctors = docs || [];
   const { data: hosps } = await sb.from('hospitals').select('id,name,contact_email');
   cachedHospitals = hosps || [];
+  const { data: pats } = await sb.from('patients').select('id,first_name,last_name,hospital_id');
+  cachedPatients = pats || [];
 }
 
 async function updateAdminRowCounts() {
@@ -1982,6 +1987,11 @@ function buildForm(table, values, hospId) {
     if(col==='doctor_id'||type==='doctor_select'){
       const docs = hospId ? cachedDoctors.filter(d=>d.hospital_id===hospId) : cachedDoctors;
       input=`<select class="form-select" id="field_${col}"><option value="">— Select Doctor —</option>${docs.map(d=>`<option value="${d.id}" ${d.id==val?'selected':''}>${d.name} · ${d.specialty}</option>`).join('')}</select>`;
+    } else if(col==='patient_id'||type==='patient_select'){
+      const pats = hospId ? cachedPatients.filter(p=>p.hospital_id===hospId) : cachedPatients;
+      input=`<select class="form-select" id="field_${col}"><option value="">— Select Patient —</option>${pats.map(p=>`<option value="${p.id}" ${p.id==val?'selected':''}>${p.first_name} ${p.last_name} (#${p.id})</option>`).join('')}</select>`;
+    } else if(col==='contact_email'){
+      input=`<input class="form-input-modal" type="email" id="field_${col}" value="${val||''}" placeholder="hospital@email.com">`;
     } else if(col==='pin'){
       input=`<input class="form-input-modal" type="text" id="field_${col}" value="${val||''}" maxlength="4" pattern="[0-9]{4}" placeholder="4 digits" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">`;
     } else if(Array.isArray(type)){
