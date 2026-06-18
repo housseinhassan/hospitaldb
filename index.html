@@ -496,6 +496,7 @@ tr:hover td{background:var(--surface2)}
     <aside id="hospSidebar">
       <div>
         <div class="sidebar-label" id="hosp-label-mydata">My Data</div>
+        <div class="table-item" id="hosp-dashboard-item" onclick="hospView('dashboard',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">📊</span> <span id="hosp-nav-dashboard">Dashboard</span></div>
         <div class="table-item active" id="hosp-patients-item" onclick="hospView('patients',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-patients">my patients</span> <span class="row-count" id="hosp-rc-patients"></span></div>
         <div class="table-item" onclick="hospView('doctors',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-doctors">my doctors</span> <span class="row-count" id="hosp-rc-doctors"></span></div>
         <div class="table-item" onclick="hospView('appointments',this);closeSidebar('hospSidebar','hospOverlay')"><span class="table-icon">▤</span> <span id="hosp-nav-appointments">appointments</span> <span class="row-count" id="hosp-rc-appointments"></span></div>
@@ -638,6 +639,15 @@ const T = {
     kpiScheduled:        'Scheduled Appts',
     kpiDepts:            'Departments',
     printCharts:         '📄 Export Charts PDF',
+    dashboard:           'Dashboard',
+    dashboardSub:        'Your hospital at a glance',
+    dashCritical:        'Critical Patients',
+    dashUpcoming:        'Upcoming Appointments',
+    dashRecent:          'Recent Patients',
+    dashViewAll:         'View all →',
+    dashNoCritical:      'No critical patients',
+    dashNoAppts:         'No upcoming appointments',
+    dashNoPatients:      'No patients yet',
     tbl_hospitals:   'hospitals',
     tbl_patients:    'patients',
     tbl_doctors:     'doctors',
@@ -790,6 +800,15 @@ const T = {
     kpiScheduled:        'RDV Planifiés',
     kpiDepts:            'Départements',
     printCharts:         '📄 Exporter Graphiques PDF',
+    dashboard:           'Tableau de Bord',
+    dashboardSub:        'Vue d\'ensemble de votre hôpital',
+    dashCritical:        'Patients Critiques',
+    dashUpcoming:        'Prochains Rendez-vous',
+    dashRecent:          'Patients Récents',
+    dashViewAll:         'Voir tout →',
+    dashNoCritical:      'Aucun patient critique',
+    dashNoAppts:         'Aucun rendez-vous à venir',
+    dashNoPatients:      'Aucun patient pour l\'instant',
     tbl_hospitals:   'hôpitaux',
     tbl_patients:    'patients',
     tbl_doctors:     'médecins',
@@ -992,6 +1011,7 @@ function applyTranslations() {
 
   // Hospital sidebar nav names
   const hospNavMap2 = {
+    'hosp-nav-dashboard':    'dashboard',
     'hosp-nav-appointments': 'tbl_appointments',
     'hosp-nav-departments':  'tbl_departments',
     'hosp-nav-admissions':   'tbl_admissions',
@@ -1102,7 +1122,11 @@ function setLang(l) {
       renderTable('adminResults', currentTable, null, null);
     }
   } else if(session.role === 'hospital') {
-    renderTable('hospResults', currentTable, null, session.hospitalId);
+    if(currentTable === 'dashboard') {
+      renderHospDashboard();
+    } else {
+      renderTable('hospResults', currentTable, null, session.hospitalId);
+    }
   }
 }
 
@@ -1788,6 +1812,150 @@ function adminDrillHospital(id) {
 }
 
 // ════════════════════════════════════════════════
+// HOSPITAL DASHBOARD
+// ════════════════════════════════════════════════
+async function renderHospDashboard() {
+  document.getElementById('hospResults').innerHTML = `<div class="loading"><div class="spinner"></div> ${t('loading')}…</div>`;
+  const hid = session.hospitalId;
+  const h = session.hospMeta;
+
+  const myDocIds = cachedDoctors.filter(d=>d.hospital_id===hid).map(d=>d.id);
+
+  const [patsR, apptsR, admsR, deptsR] = await Promise.all([
+    sb.from('patients').select('*').eq('hospital_id',hid).order('id',{ascending:false}),
+    myDocIds.length>0 ? sb.from('appointments').select('*').in('doctor_id',myDocIds).eq('status','Scheduled').order('date',{ascending:true}).limit(5) : {data:[]},
+    sb.from('admissions').select('*').eq('hospital_id',hid),
+    sb.from('departments').select('*').eq('hospital_id',hid),
+  ]);
+
+  const pats   = patsR.data  || [];
+  const appts  = apptsR.data || [];
+  const adms   = admsR.data  || [];
+  const depts  = deptsR.data || [];
+
+  const activeCount    = pats.filter(p=>p.status==='Active').length;
+  const criticalPats   = pats.filter(p=>p.status==='Critical');
+  const dischargedCount= pats.filter(p=>p.status==='Discharged').length;
+  const recentPats     = pats.slice(0,6);
+
+  document.getElementById('hospResults').innerHTML = `
+    <div style="padding:0 0 16px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:2px">${t('dashboard')}</div>
+      <div style="font-size:13px;color:var(--muted)">${h?.name||''} — ${t('dashboardSub')}</div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:12px;margin-bottom:20px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('kpiTotalPatients')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--cyan)">${pats.length}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('kpiActivePatients')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--green)">${activeCount}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid ${criticalPats.length>0?'#7f1d1d':'var(--border)'};border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:${criticalPats.length>0?'var(--red)':'var(--muted)'};margin-bottom:4px">${t('kpiCritical')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--red)">${criticalPats.length}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('kpiScheduled')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--purple)">${appts.length}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('kpiTotalDoctors')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--yellow)">${myDocIds.length}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('kpiDepts')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--orange)">${depts.length}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('kpiTotalAdmissions')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--cyan)">${adms.length}</div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${t('discharged')}</div>
+        <div style="font-size:24px;font-weight:600;font-family:var(--mono);color:var(--muted)">${dischargedCount}</div>
+      </div>
+    </div>
+
+    <!-- Critical + Upcoming row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+
+      <!-- Critical Patients -->
+      <div style="background:var(--surface);border:1px solid ${criticalPats.length>0?'#7f1d1d':'var(--border)'};border-radius:10px;padding:16px">
+        <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:12px;display:flex;align-items:center;gap:6px">
+          🚨 ${t('dashCritical')}
+          ${criticalPats.length>0?`<span style="background:var(--red);color:#000;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px">${criticalPats.length}</span>`:''}
+        </div>
+        ${criticalPats.length===0
+          ? `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">✅ ${t('dashNoCritical')}</div>`
+          : criticalPats.map(p=>{
+              const doc = cachedDoctors.find(d=>d.id===p.doctor_id);
+              const adm = adms.find(a=>a.patient_id===p.id);
+              return `<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#450a0a;border-radius:8px;margin-bottom:8px;cursor:pointer" onclick="hospView('patients',document.getElementById('hosp-patients-item'))">
+                <div style="width:32px;height:32px;background:#3b0764;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">🚨</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:#fca5a5">${p.first_name} ${p.last_name}</div>
+                  <div style="font-size:11px;color:#f87171">${doc?doc.name:'—'}${adm?' · '+adm.room:''}</div>
+                </div>
+                <span class="badge badge-critical">${t('criticalBadge')}</span>
+              </div>`;
+            }).join('')
+        }
+      </div>
+
+      <!-- Upcoming Appointments -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+          <span style="display:flex;align-items:center;gap:6px">📅 ${t('dashUpcoming')}</span>
+          <span style="font-size:11px;color:var(--cyan);cursor:pointer" onclick="hospView('appointments',document.querySelector('#hospSidebar .table-item:nth-child(4)'))">${t('dashViewAll')}</span>
+        </div>
+        ${appts.length===0
+          ? `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">📅 ${t('dashNoAppts')}</div>`
+          : appts.map(a=>{
+              const pat = pats.find(p=>p.id===a.patient_id);
+              const doc = cachedDoctors.find(d=>d.id===a.doctor_id);
+              return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
+                <div>
+                  <div style="font-size:12px;font-weight:600">${pat?pat.first_name+' '+pat.last_name:'Patient #'+a.patient_id}</div>
+                  <div style="font-size:10px;color:var(--muted)">${a.date} · ${a.time||''} · ${a.type}</div>
+                  <div style="font-size:10px;color:var(--purple)">${doc?doc.name:'—'}</div>
+                </div>
+                <span class="badge badge-pending">${t('scheduled2')}</span>
+              </div>`;
+            }).join('')
+        }
+      </div>
+    </div>
+
+    <!-- Recent Patients -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:13px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <span>👥 ${t('dashRecent')}</span>
+        <span style="font-size:11px;color:var(--cyan);cursor:pointer" onclick="hospView('patients',document.getElementById('hosp-patients-item'))">${t('dashViewAll')}</span>
+      </div>
+      ${recentPats.length===0
+        ? `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">${t('dashNoPatients')}</div>`
+        : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+            ${recentPats.map(p=>{
+              const doc = cachedDoctors.find(d=>d.id===p.doctor_id);
+              const statusClass = p.status==='Active'?'badge-active':p.status==='Critical'?'badge-critical':'badge-closed';
+              const statusLabel = p.status==='Active'?t('active'):p.status==='Critical'?t('criticalBadge'):t('discharged');
+              return `<div style="padding:12px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+                <div style="font-size:12px;font-weight:600;margin-bottom:2px">${p.first_name} ${p.last_name}</div>
+                <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${p.blood_type||'—'} · ${p.gender} · ${p.dob||'—'}</div>
+                <div style="font-size:10px;color:var(--purple);margin-bottom:6px">${doc?doc.name:'—'}</div>
+                <span class="badge ${statusClass}">${statusLabel}</span>
+              </div>`;
+            }).join('')}
+          </div>`
+      }
+    </div>`;
+}
+
+// ════════════════════════════════════════════════
 // HOSPITAL INIT
 // ════════════════════════════════════════════════
 async function initHospital() {
@@ -1819,13 +1987,21 @@ async function initHospital() {
       <div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Doctors</div><div style="font-size:18px;font-weight:600;font-family:var(--mono);color:var(--green)">${drs.count??0}</div></div>
     </div>`;
   runChip(document.querySelector('#hospFilterBar .chip'), 'patients', {column:'status',value:'Active'}, 'hosp');
+  // Land on dashboard first
+  hospView('dashboard', document.getElementById('hosp-dashboard-item'));
 }
 
 function hospView(view, el) {
   document.querySelectorAll('#hospitalScreen aside .table-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
   currentContext='hosp'; currentTable=view;
-  renderTable('hospResults', view, null, session.hospitalId);
+  if(view==='dashboard') {
+    document.getElementById('hospFilterBar').style.display='none';
+    renderHospDashboard();
+  } else {
+    document.getElementById('hospFilterBar').style.display='';
+    renderTable('hospResults', view, null, session.hospitalId);
+  }
 }
 
 // ════════════════════════════════════════════════
