@@ -1270,14 +1270,12 @@ async function printCharts() {
     const card = canvas.closest('.chart-card');
     const title = card?.querySelector('.chart-title span:last-child')?.textContent || '';
 
-    const scale = 3;
     const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = canvas.width * scale;
-    tmpCanvas.height = canvas.height * scale;
+    tmpCanvas.width = canvas.width;
+    tmpCanvas.height = canvas.height;
     const tmpCtx = tmpCanvas.getContext('2d');
     tmpCtx.fillStyle = '#ffffff';
     tmpCtx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
-    tmpCtx.scale(scale, scale);
     tmpCtx.drawImage(canvas, 0, 0);
     const imgData = tmpCanvas.toDataURL('image/png', 1.0);
     const aspect = canvas.height / canvas.width;
@@ -1640,6 +1638,7 @@ async function renderCharts() {
 
   // ── Render charts ──
   Chart.defaults.color = '#94a3b8';
+  Chart.defaults.devicePixelRatio = 4;
 
   // 1. Patients per hospital — horizontal bar
   chartInstances.patByHosp = new Chart(document.getElementById('chartPatByHosp'), {
