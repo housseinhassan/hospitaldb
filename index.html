@@ -1701,7 +1701,7 @@ async function initAdmin() {
 async function loadCaches() {
   const { data: docs } = await sb.from('doctors').select('id,name,specialty,hospital_id');
   cachedDoctors = docs || [];
-  const { data: hosps } = await sb.from('hospitals').select('id,name');
+  const { data: hosps } = await sb.from('hospitals').select('id,name,contact_email');
   cachedHospitals = hosps || [];
 }
 
@@ -2015,14 +2015,36 @@ async function saveRecord() {
   });
   let error;
   if(editingRow) {
-    const {error:e}=await sb.from(tableName).update(record).eq('id',editingRow.id);
+    const {data:updated, error:e}=await sb.from(tableName).update(record).eq('id',editingRow.id).select().single();
     error=e;
-    if(!e) showToast('✏️',`${t('toastUpdated')} ${tableName}`);
+    if(!e){
+      showToast('✏️',`${t('toastUpdated')} ${tableName}`);
+      // Send critical alert if patient status changed to Critical
+      if(tableName==='patients' && record.status==='Critical' && editingRow.status!=='Critical') {
+        const hid = updated.hospital_id;
+        const hosp = cachedHospitals.find(h=>h.id===hid);
+        if(hosp?.contact_email) {
+          sendNotification('critical_patient', hosp.name, hosp.contact_email, updated);
+        }
+      }
+    }
   } else {
     const {data:inserted, error:e}=await sb.from(tableName).insert(record).select().single();
     error=e;
     if(!e){
       showToast('✅',`${t('toastAdded')} ${tableName}`);
+      // Send new patient notification
+      if(tableName==='patients' && inserted) {
+        const hid = inserted.hospital_id;
+        const hosp = cachedHospitals.find(h=>h.id===hid);
+        if(hosp?.contact_email) {
+          sendNotification('new_patient', hosp.name, hosp.contact_email, inserted);
+        }
+        // Send critical alert if added directly as Critical
+        if(inserted.status==='Critical' && hosp?.contact_email) {
+          sendNotification('critical_patient', hosp.name, hosp.contact_email, inserted);
+        }
+      }
       // Auto-create auth account when a new hospital is added
       if(tableName==='hospitals' && inserted) {
         showToast('⏳','Creating hospital login account…');
@@ -2053,6 +2075,22 @@ async function saveRecord() {
   closeModal();
   await loadCaches();
   renderTable(targetId, tableName, null, hospId);
+}
+
+async function sendNotification(type, hospital_name, contact_email, patient) {
+  try {
+    const r = await fetch('/api/send-notification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, hospital_name, contact_email, patient })
+    });
+    const result = await r.json();
+    if(result.success) {
+      showToast('📧', type==='critical_patient' ? '🚨 Critical alert email sent!' : '📧 Notification email sent!');
+    }
+  } catch(err) {
+    console.error('Notification error:', err);
+  }
 }
 
 // ════════════════════════════════════════════════
