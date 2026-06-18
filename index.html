@@ -637,7 +637,7 @@ const T = {
     kpiCritical:         'Critical Cases',
     kpiScheduled:        'Scheduled Appts',
     kpiDepts:            'Departments',
-    printCharts:         'Print Charts',
+    printCharts:         '📄 Export Charts PDF',
     tbl_hospitals:   'hospitals',
     tbl_patients:    'patients',
     tbl_doctors:     'doctors',
@@ -788,7 +788,7 @@ const T = {
     kpiCritical:         'Cas Critiques',
     kpiScheduled:        'RDV Planifiés',
     kpiDepts:            'Départements',
-    printCharts:         'Imprimer les Graphiques',
+    printCharts:         '📄 Exporter Graphiques PDF',
     tbl_hospitals:   'hôpitaux',
     tbl_patients:    'patients',
     tbl_doctors:     'médecins',
@@ -1210,26 +1210,88 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
-function printCharts() {
-  window.print();
-}
+async function printCharts() {
+  showToast('⏳', lang==='fr'?'Génération du PDF…':'Generating PDF…');
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 12;
+  const colW = (pageW - margin*2 - 6) / 2;
 
-// Print styles
-const printStyle = document.createElement('style');
-printStyle.textContent = `
-  @media print {
-    body * { visibility: hidden; }
-    #adminResults, #adminResults * { visibility: visible; }
-    #adminResults { position: fixed; top: 0; left: 0; width: 100%; background: white; }
-    .result-toolbar, .export-wrap { display: none !important; }
-    .chart-card { border: 1px solid #ccc !important; background: white !important; break-inside: avoid; }
-    .chart-title { color: #000 !important; }
-    .kpi-card { border: 1px solid #ccc !important; background: white !important; }
-    .kpi-label { color: #666 !important; }
-    .kpi-value { color: #000 !important; }
-    .charts-grid { grid-template-columns: 1fr 1fr !important; }
+  // Title
+  doc.setFontSize(16);
+  doc.setTextColor(56,189,248);
+  doc.text('HospitalDB', margin, 14);
+  doc.setFontSize(10);
+  doc.setTextColor(100,116,139);
+  doc.text(`${t('chartsTitle')} — ${new Date().toLocaleDateString()}`, margin, 20);
+
+  // KPI summary line
+  const kpiVals = ['kpi-hosp-lbl','kpi-pat-lbl','kpi-doc-lbl','kpi-adm-lbl'].map(id => {
+    const card = document.getElementById(id)?.closest('.kpi-card');
+    if(!card) return '';
+    const label = card.querySelector('.kpi-label')?.textContent || '';
+    const val   = card.querySelector('.kpi-value')?.textContent || '';
+    return `${label}: ${val}`;
+  }).filter(Boolean).join('   |   ');
+  doc.setFontSize(8);
+  doc.setTextColor(148,163,184);
+  doc.text(kpiVals, margin, 26, { maxWidth: pageW - margin*2 });
+
+  let y = 32;
+
+  // Get all canvas elements in order
+  const canvases = [
+    { id:'chartPatByHosp',    full:true  },
+    { id:'chartPatStatus',    full:false },
+    { id:'chartAdmitSeverity',full:false },
+    { id:'chartDocSpec',      full:false },
+    { id:'chartApptStatus',   full:false },
+    { id:'chartBedCapacity',  full:true  },
+  ];
+
+  for(const {id, full} of canvases) {
+    const canvas = document.getElementById(id);
+    if(!canvas) continue;
+
+    // Get title
+    const card = canvas.closest('.chart-card');
+    const titleEl = card?.querySelector('.chart-title span:last-child');
+    const title = titleEl?.textContent || '';
+
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const aspect = canvas.height / canvas.width;
+
+    if(full) {
+      const w = pageW - margin*2;
+      const h = Math.min(w * aspect, 70);
+      if(y + h + 10 > 280) { doc.addPage(); y = 14; }
+      doc.setFontSize(9); doc.setTextColor(226,232,240);
+      doc.text(title, margin, y+4);
+      doc.addImage(imgData,'PNG', margin, y+7, w, h);
+      y += h + 14;
+    } else {
+      const w = colW;
+      const h = Math.min(w * aspect, 65);
+      const isLeft = canvases.filter(c=>!c.full).indexOf(canvases.find(c=>c.id===id)) % 2 === 0;
+      const x = isLeft ? margin : margin + colW + 6;
+      if(isLeft) {
+        if(y + h + 10 > 280) { doc.addPage(); y = 14; }
+        doc.setFontSize(9); doc.setTextColor(226,232,240);
+        doc.text(title, x, y+4);
+        doc.addImage(imgData,'PNG', x, y+7, w, h);
+      } else {
+        doc.setFontSize(9); doc.setTextColor(226,232,240);
+        doc.text(title, x, y+4);
+        doc.addImage(imgData,'PNG', x, y+7, w, h);
+        y += h + 14;
+      }
+    }
   }
-`;
+
+  doc.save(`hospitaldb_charts_${new Date().toISOString().slice(0,10)}.pdf`);
+  showToast('📄', lang==='fr'?'PDF téléchargé!':'Charts PDF downloaded!');
+}
 document.head.appendChild(printStyle);
 
 // ════════════════════════════════════════════════
