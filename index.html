@@ -454,7 +454,7 @@ tr:hover td{background:var(--surface2)}
         <span class="chip" id="chip-adm-active" onclick="runChip(this,'patients',{column:'status',value:'Active'},'admin')">🟢 <span id="chip-adm-active-txt">Active Patients</span></span>
         <span class="chip" id="chip-adm-doctors" onclick="runChip(this,'doctors',null,'admin')">👨‍⚕️ <span id="chip-adm-doctors-txt">All Doctors</span></span>
         <span class="chip" id="chip-adm-scheduled" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'admin')">📅 <span id="chip-adm-scheduled-txt">Scheduled</span></span>
-        <span class="chip" id="chip-adm-critical" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'admin')">🚨 <span id="chip-adm-critical-txt">Critical</span></span>
+        <span class="chip" id="chip-adm-critical" onclick="runChip(this,'patients',{column:'status',value:'Critical'},'admin')">🚨 <span id="chip-adm-critical-txt">Critical</span></span>
         <span class="chip" id="chip-adm-departments" onclick="runChip(this,'departments',null,'admin')">🏢 <span id="chip-adm-departments-txt">Departments</span></span>
       </div>
       <div class="results-area" id="adminResults"></div>
@@ -510,7 +510,7 @@ tr:hover td{background:var(--surface2)}
         <span class="chip chip-active" id="chip-hosp-active" onclick="runChip(this,'patients',{column:'status',value:'Active'},'hosp')">🟢 <span id="chip-hosp-active-txt">Active Patients</span></span>
         <span class="chip" id="chip-hosp-all" onclick="runChip(this,'patients',null,'hosp')">👥 <span id="chip-hosp-all-txt">All Patients</span></span>
         <span class="chip" id="chip-hosp-scheduled" onclick="runChip(this,'appointments',{column:'status',value:'Scheduled'},'hosp')">📅 <span id="chip-hosp-scheduled-txt">Scheduled</span></span>
-        <span class="chip" id="chip-hosp-critical" onclick="runChip(this,'admissions',{column:'severity',value:'Critical'},'hosp')">🚨 <span id="chip-hosp-critical-txt">Critical</span></span>
+        <span class="chip" id="chip-hosp-critical" onclick="runChip(this,'patients',{column:'status',value:'Critical'},'hosp')">🚨 <span id="chip-hosp-critical-txt">Critical</span></span>
         <span class="chip" id="chip-hosp-doctors" onclick="runChip(this,'doctors',null,'hosp')">👨‍⚕️ <span id="chip-hosp-doctors-txt">Doctors</span></span>
       </div>
       <div class="results-area" id="hospResults"></div>
