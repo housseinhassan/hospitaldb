@@ -1268,13 +1268,15 @@ async function printCharts() {
     const titleEl = card?.querySelector('.chart-title span:last-child');
     const title = titleEl?.textContent || '';
 
-    // Draw chart on white background
+    // Draw chart on white background at high resolution
+    const scale = 3;
     const tmpCanvas = document.createElement('canvas');
-    tmpCanvas.width = canvas.width;
-    tmpCanvas.height = canvas.height;
+    tmpCanvas.width = canvas.width * scale;
+    tmpCanvas.height = canvas.height * scale;
     const tmpCtx = tmpCanvas.getContext('2d');
     tmpCtx.fillStyle = '#ffffff';
     tmpCtx.fillRect(0, 0, tmpCanvas.width, tmpCanvas.height);
+    tmpCtx.scale(scale, scale);
     tmpCtx.drawImage(canvas, 0, 0);
     const imgData = tmpCanvas.toDataURL('image/png', 1.0);
 
@@ -1633,7 +1635,10 @@ async function renderCharts() {
   chartInstances.patByHosp = new Chart(document.getElementById('chartPatByHosp'), {
     type: 'bar',
     data: { labels: patByHosp.map(x=>x.label), datasets: [{ label: t('kpiTotalPatients'), data: patByHosp.map(x=>x.value), backgroundColor: COLORS, borderRadius: 6, borderSkipped: false }] },
-    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks:{color:'#64748b',font:{size:10}, stepSize:1, callback: val => Number.isInteger(val)?val:''}, grid:{color:'#1e2a3a'} }, y: { ticks:{color:'#94a3b8',font:{size:10}}, grid:{color:'#1e2a3a'} } } }
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend: { display: false } }, scales: {
+      x: { ticks:{color:'#64748b',font:{size:10},stepSize:1,callback:val=>Number.isInteger(val)?val:''}, grid:{display:false}, border:{display:false} },
+      y: { ticks:{color:'#94a3b8',font:{size:10}}, grid:{display:false}, border:{display:false} }
+    }}
   });
 
   // 2. Patient status — doughnut
@@ -1654,7 +1659,10 @@ async function renderCharts() {
   chartInstances.docSpec = new Chart(document.getElementById('chartDocSpec'), {
     type: 'bar',
     data: { labels: specLabels, datasets: [{ label: t('kpiTotalDoctors'), data: specValues, backgroundColor: PURPLE, borderRadius: 4, borderSkipped: false }] },
-    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend:{display:false} }, scales: { x:{ticks:{color:'#64748b',font:{size:10}, stepSize:1, callback: val => Number.isInteger(val)?val:''},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#94a3b8',font:{size:9}},grid:{color:'#1e2a3a'}} } }
+    options: { ...chartDefaults, indexAxis: 'y', plugins: { legend:{display:false} }, scales: {
+      x: { ticks:{color:'#64748b',font:{size:10},stepSize:1,callback:val=>Number.isInteger(val)?val:''}, grid:{display:false}, border:{display:false} },
+      y: { ticks:{color:'#94a3b8',font:{size:9}}, grid:{display:false}, border:{display:false} }
+    }}
   });
 
   // 5. Appointments by status — pie
@@ -1668,7 +1676,10 @@ async function renderCharts() {
   chartInstances.bedCap = new Chart(document.getElementById('chartBedCapacity'), {
     type: 'bar',
     data: { labels: bedLabels, datasets: [{ label: t('chartBedCapacity'), data: bedValues, backgroundColor: CYAN, borderRadius: 6, borderSkipped: false }] },
-    options: { ...chartDefaults, plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#64748b',font:{size:9}},grid:{color:'#1e2a3a'}}, y:{ticks:{color:'#64748b',font:{size:10}, stepSize:1, callback: val => Number.isInteger(val)?val:''},grid:{color:'#1e2a3a'}} } }
+    options: { ...chartDefaults, plugins:{legend:{display:false}}, scales:{
+      x: { ticks:{color:'#64748b',font:{size:9}}, grid:{display:false}, border:{display:false} },
+      y: { ticks:{color:'#64748b',font:{size:10},stepSize:1,callback:val=>Number.isInteger(val)?val:''}, grid:{display:false}, border:{display:false} }
+    }}
   });
 }
 async function initAdmin() {
