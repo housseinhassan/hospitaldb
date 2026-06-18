@@ -1212,17 +1212,32 @@ function showScreen(id) {
 
 async function printCharts() {
   showToast('⏳', lang==='fr'?'Génération du PDF…':'Generating PDF…');
+
+  // ── Temporarily set all chart text to dark for PDF ──
+  const darkTick = '#222222';
+  const darkLegend = '#333333';
+  Object.values(chartInstances).forEach(chart => {
+    if(chart.options.scales) {
+      Object.values(chart.options.scales).forEach(scale => {
+        if(scale.ticks) scale.ticks.color = darkTick;
+        if(scale.grid) scale.grid.display = false;
+      });
+    }
+    if(chart.options.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = darkLegend;
+    chart.update('none'); // update without animation
+  });
+
+  await new Promise(r => setTimeout(r, 200)); // wait for render
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 12;
   const colW = (pageW - margin*2 - 6) / 2;
 
-  // White background
   doc.setFillColor(255,255,255);
   doc.rect(0, 0, pageW, 297, 'F');
 
-  // Title
   doc.setFontSize(16);
   doc.setTextColor(14,73,102);
   doc.text('HospitalDB', margin, 14);
@@ -1230,26 +1245,15 @@ async function printCharts() {
   doc.setTextColor(30,30,30);
   doc.text(`${t('chartsTitle')} — ${new Date().toLocaleDateString()}`, margin, 21);
 
-  // KPI summary line
-  const kpiPairs = [
-    ['kpi-hosp-lbl','kpiTotalHospitals'],
-    ['kpi-pat-lbl','kpiTotalPatients'],
-    ['kpi-doc-lbl','kpiTotalDoctors'],
-    ['kpi-adm-lbl','kpiTotalAdmissions'],
-  ].map(([id]) => {
+  const kpiPairs = ['kpi-hosp-lbl','kpi-pat-lbl','kpi-doc-lbl','kpi-adm-lbl'].map(id => {
     const card = document.getElementById(id)?.closest('.kpi-card');
     if(!card) return '';
-    const label = card.querySelector('.kpi-label')?.textContent || '';
-    const val   = card.querySelector('.kpi-value')?.textContent || '';
-    return `${label}: ${val}`;
+    return `${card.querySelector('.kpi-label')?.textContent||''}: ${card.querySelector('.kpi-value')?.textContent||''}`;
   }).filter(Boolean).join('   |   ');
-
-  doc.setFontSize(8);
-  doc.setTextColor(100,116,139);
+  doc.setFontSize(8); doc.setTextColor(100,116,139);
   doc.text(kpiPairs, margin, 27, { maxWidth: pageW - margin*2 });
 
   let y = 33;
-
   const canvases = [
     { id:'chartPatByHosp',    full:true  },
     { id:'chartPatStatus',    full:false },
@@ -1263,12 +1267,9 @@ async function printCharts() {
   for(const {id, full} of canvases) {
     const canvas = document.getElementById(id);
     if(!canvas) continue;
-
     const card = canvas.closest('.chart-card');
-    const titleEl = card?.querySelector('.chart-title span:last-child');
-    const title = titleEl?.textContent || '';
+    const title = card?.querySelector('.chart-title span:last-child')?.textContent || '';
 
-    // Draw chart on white background at high resolution
     const scale = 3;
     const tmpCanvas = document.createElement('canvas');
     tmpCanvas.width = canvas.width * scale;
@@ -1279,7 +1280,6 @@ async function printCharts() {
     tmpCtx.scale(scale, scale);
     tmpCtx.drawImage(canvas, 0, 0);
     const imgData = tmpCanvas.toDataURL('image/png', 1.0);
-
     const aspect = canvas.height / canvas.width;
 
     if(full) {
@@ -1287,8 +1287,7 @@ async function printCharts() {
       const h = Math.min(w * aspect, 68);
       if(y + h + 12 > 285) { doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,pageW,297,'F'); y = 14; }
       doc.setFontSize(9); doc.setTextColor(30,30,30); doc.setFont(undefined,'bold');
-      doc.text(title, margin, y+5);
-      doc.setFont(undefined,'normal');
+      doc.text(title, margin, y+5); doc.setFont(undefined,'normal');
       doc.addImage(imgData,'PNG', margin, y+8, w, h);
       y += h + 14;
     } else {
@@ -1298,8 +1297,7 @@ async function printCharts() {
       const x = isLeft ? margin : margin + colW + 6;
       if(isLeft && y + h + 12 > 285) { doc.addPage(); doc.setFillColor(255,255,255); doc.rect(0,0,pageW,297,'F'); y = 14; }
       doc.setFontSize(9); doc.setTextColor(30,30,30); doc.setFont(undefined,'bold');
-      doc.text(title, x, y+5);
-      doc.setFont(undefined,'normal');
+      doc.text(title, x, y+5); doc.setFont(undefined,'normal');
       doc.addImage(imgData,'PNG', x, y+8, w, h);
       if(!isLeft) y += h + 14;
       halfIndex++;
@@ -1307,6 +1305,18 @@ async function printCharts() {
   }
 
   doc.save(`hospitaldb_charts_${new Date().toISOString().slice(0,10)}.pdf`);
+
+  // ── Restore original dark-theme colors ──
+  Object.values(chartInstances).forEach(chart => {
+    if(chart.options.scales) {
+      Object.values(chart.options.scales).forEach(scale => {
+        if(scale.ticks) scale.ticks.color = '#64748b';
+      });
+    }
+    if(chart.options.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = '#94a3b8';
+    chart.update('none');
+  });
+
   showToast('📄', lang==='fr'?'PDF téléchargé!':'Charts PDF downloaded!');
 }
 
